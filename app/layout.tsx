@@ -4,26 +4,26 @@ import "./globals.css";
 import SessionWrapper from "@/components/SessionWrapper";
 import SessionSync from "@/components/SessionSync";
 import { Toaster } from "react-hot-toast";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
   subsets: ["latin"],
 });
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html>
-      <body>
+      <body className={`${geistSans.variable} ${geistMono.variable}`}>
          <SessionWrapper><SessionSync/>{children}<Toaster position="top-right" /></SessionWrapper>
       </body>
     </html>
   );
 }
-
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "Create Next App",

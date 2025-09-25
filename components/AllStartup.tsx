@@ -3,7 +3,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
-import { ChevronDownIcon, ChevronUpIcon, AdjustmentsHorizontalIcon, TagIcon, MapPinIcon, BuildingOfficeIcon } from '@heroicons/react/24/solid';
+import { ChevronDownIcon, AdjustmentsHorizontalIcon, TagIcon, MapPinIcon, BuildingOfficeIcon } from '@heroicons/react/24/solid';
 import TagSelector from './TagSelector';
 
 interface Props {

@@ -1,13 +1,29 @@
 'use client';
 
 import React from 'react';
-import { EyeIcon, ArrowRightIcon } from '@heroicons/react/24/solid';
+import { EyeIcon } from '@heroicons/react/24/solid';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 
+interface Startup {
+  id: string;
+  slug: string;
+  created_at: string;
+  views: number | null;
+  image_url: string | null;
+  name: string;
+  founder_id: string;
+  profiles: {
+    full_name: string;
+    avatar_url: string | null;
+  };
+  description: string;
+  tags: string[];
+}
+
 interface Props {
-  startups: any[];
+  startups: Startup[];
 }
 
 const StartupCard: React.FC<Props> = ({ startups }) => {
@@ -16,7 +32,7 @@ const StartupCard: React.FC<Props> = ({ startups }) => {
   return (
     <div className="flex justify-center items-start px-4">
       <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {startups.map((items: any) => (
+        {startups.map((items: Startup) => (
           <li
             key={items.id}
             onClick={() => router.push(`/startup/${items.slug}`)}
@@ -38,7 +54,7 @@ const StartupCard: React.FC<Props> = ({ startups }) => {
             </div>
 
             <div className="mt-3 flex h-[200px] w-full overflow-hidden rounded-xl justify-center items-center transition-transform duration-300 hover:scale-105">
-              <img
+              <Image
                 src={(items.image_url && /^(https?:)?\/\//.test(items.image_url) ? items.image_url : "/user.png")}
                 alt="Startup Logo"
                 className="w-full h-full object-cover"

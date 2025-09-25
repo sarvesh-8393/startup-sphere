@@ -10,7 +10,7 @@ The goal is to help startups get visibility and build connections. It's not a fu
 
 ## Features
 
-- **User Authentication**: Users sign up and log in using email (via NextAuth and Supabase). Guests are redirected to login for most features.
+- **User Authentication**: Users sign up and log in using GitHub or Google OAuth (via NextAuth and Supabase). Guests are redirected to login for most features.
 - **User Profiles**: After signup, users complete an onboarding form to add personal details like full name, bio, location, and phone.
 - **Startup Creation and Editing**: Founders can create a detailed startup profile including name, description, mission, team info, traction, and more. They can upload logos or add image URLs. Editing is supported via a query param (e.g., ?edit=id).
 - **Startup Browsing and Discovery**: 
@@ -32,7 +32,7 @@ The app emphasizes storytelling: Startups tell their "why", problems solved, tra
 - **Styling**: Tailwind CSS 4, with custom pink/amber gradients and shadows.
 - **UI Components**: Headless UI, Lucide React icons, Heroicons, React Hook Form for forms, React Hot Toast for notifications.
 - **Backend/Database**: Supabase (PostgreSQL) for auth, storage, and data. Uses server-side fetching in Next.js API routes.
-- **Authentication**: NextAuth.js v4 with Supabase provider.
+- **Authentication**: NextAuth.js v4 with GitHub and Google OAuth providers, integrated with Supabase.
 - **Animations/Effects**: GSAP for smooth interactions.
 - **Form Validation**: Zod for schema validation, integrated with React Hook Form.
 - **Email/Notifications**: Nodemailer and Resend for test emails (e.g., onboarding).
@@ -146,6 +146,22 @@ Supabase handles auth.users table automatically.
      NEXTAUTH_SECRET=some_random_secret  # Generate with `openssl rand -base64 32`
      NEXTAUTH_URL=http://localhost:3000
      ```
+   - For GitHub OAuth (optional):
+     ```
+     GITHUB_CLIENT_ID=your_github_client_id
+     GITHUB_CLIENT_SECRET=your_github_client_secret
+     ```
+   - For Google OAuth:
+     - Go to [Google Cloud Console](https://console.cloud.google.com/).
+     - Create a new project or select existing.
+     - Enable Google+ API.
+     - Create OAuth 2.0 credentials (Client ID and Secret).
+     - Add authorized redirect URIs: `http://localhost:3000/api/auth/callback/google` (for local) and your production URL.
+     - Add to `.env.local`:
+       ```
+       GOOGLE_CLIENT_ID=your_google_client_id
+       GOOGLE_CLIENT_SECRET=your_google_client_secret
+       ```
    - For email: Add SMTP details if using Nodemailer (optional for tests).
 
 4. **Database Setup**:
@@ -171,7 +187,7 @@ Troubleshooting:
 
 ## Usage
 
-1. **First Visit**: You'll be redirected to `/login`. Sign up with email.
+1. **First Visit**: You'll be redirected to `/login`. Sign in with GitHub or Google.
 2. **Onboarding**: After login, fill `/onboarding` form for profile.
 3. **Browse Startups**: Go to home (`/`). Use search, filters (tags via chips, stage dropdown, location input), sort (views/date).
 4. **View Startup**: Click a card → `/startup/[slug]`. See full story, like/follow.
@@ -185,7 +201,7 @@ Mobile: Filters collapse nicely; forms are touch-friendly.
 
 All under `/api/` (Next.js API routes). Protected by auth where noted.
 
-- **Auth**: `/api/auth/[...nextauth]/route.ts` – Handles signin, callback (Supabase provider).
+- **Auth**: `/api/auth/[...nextauth]/route.ts` – Handles signin, callback (GitHub and Google OAuth providers).
 - **Onboarding**: `POST /api/onboarding` – Save profile.
 - **User Sync**: `POST /api/sync-user` – Update session/user data.
 - **Startups**:
@@ -217,6 +233,8 @@ Issues? Open a GitHub issue. Focus on UX improvements, new filters, or real paym
 ## License
 
 MIT License – Feel free to use, modify, and distribute. No warranties.
-#   s t a r t u p - s p h e r e  
- #   s t a r t u p - s p h e r e  
+#   s t a r t u p - s p h e r e 
+ 
+ #   s t a r t u p - s p h e r e 
+ 
  

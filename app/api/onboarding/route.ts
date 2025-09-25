@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabaseClient";
 
 export async function POST(req: Request) {
   try {
-    const { email, tags, stage, location } = await req.json();
+    const { email, tags, size, location } = await req.json();
 
     if (!email) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
@@ -27,7 +27,7 @@ export async function POST(req: Request) {
         {
           profile_id: profile.id, // 👈 correct UUID
           tags,
-          stage,
+          stage: size,
           location,
         },
       ]);
