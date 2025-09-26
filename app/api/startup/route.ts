@@ -24,14 +24,14 @@ export async function GET(request: Request) {
     }
 
     // 1) Resolve profile id from email
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile } = await supabase
       .from("profiles")
       .select("id")
       .eq("email", userEmail)
       .single();
 
-    let prefs: any = null;
-    let prefsError: any = null;
+    let prefs: { tags: string[] | null, stage: string | null, location: string | null } | null = null;
+    let prefsError: unknown = null;
     if (profile) {
       // 2) Get user preferences
       const { data: prefsData, error: prefsErr } = await supabase
@@ -145,7 +145,7 @@ export async function GET(request: Request) {
     // - Compute match_count in JS for sorting
 
     // start with base select and require overlapping tags with prefs
-    let dbQuery: any = supabase
+    let dbQuery = supabase
       .from("startups")
       .select(
         `id, name, short_description, description, tags, website_url, created_at, founder_id, image_url, slug, likes, views, profiles ( full_name, avatar_url )`
@@ -223,15 +223,15 @@ export async function GET(request: Request) {
     }
 
     // Compute match_count in JS and sort if needed
-    const startupsWithMatch = startups.map((startup: any) => {
-      const matchCount = startup.tags ? startup.tags.filter((tag: string) => userTags.includes(tag)).length : 0;
+    const startupsWithMatch = startups.map((startup: Record<string, unknown>) => {
+      const matchCount = (startup.tags as string[]) ? (startup.tags as string[]).filter((tag: string) => userTags.includes(tag)).length : 0;
       return { ...startup, match_count: matchCount };
     });
 
     let sortedStartups = startupsWithMatch;
 
     if (orderByMatch) {
-      sortedStartups = [...startupsWithMatch].sort((a: any, b: any) => b.match_count - a.match_count);
+      sortedStartups = [...startupsWithMatch].sort((a: Record<string, unknown>, b: Record<string, unknown>) => (b.match_count as number) - (a.match_count as number));
     }
 
     // If no startups match preferences, return all startups with applied sorting
@@ -283,7 +283,7 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json(sortedStartups, { status: 200 });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Server error in /api/home:", err);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }

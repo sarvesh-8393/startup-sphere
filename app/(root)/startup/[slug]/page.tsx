@@ -2,15 +2,14 @@
 
 import Navbar from "@/components/Navbar";
 import Image from "next/image";
-import { LinkedinIcon, Twitter, Globe, Target, Trophy, Users, Lightbulb, Rocket, Award, TrendingUp, Heart, ExternalLink, ArrowRight, Star, Calendar, Eye } from "lucide-react";
+import { LinkedinIcon, Twitter, Globe, Target, Users, Lightbulb, Rocket, Award, TrendingUp, Heart, ExternalLink, ArrowRight, Star, Calendar, Eye } from "lucide-react";
 import FollowButton from "./StartupPageClient";
 import EditButton from "@/components/EditButton";
-import Likes from "@/components/Likes";
 import ViewTrackerClient from "./ViewTrackerClient";
 import { supabase } from "@/lib/supabaseClient";
 
 
-async function getStartup(slug: string): Promise<any | null> {
+async function getStartup(slug: string): Promise<Record<string, unknown> | null> {
   try {
     const { data, error } = await supabase
       .from('startups')
@@ -30,28 +29,7 @@ async function getStartup(slug: string): Promise<any | null> {
     return null;
   }
 }
-async function follow(slug: string) {
-  try {
-    const res = await fetch('/api/follow', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ slug: slug }),
-    });
 
-    if (!res.ok) {
-      const errorData = await res.json();
-      console.error('Follow failed:', errorData.error);
-      return null;
-    }
-
-    return res.json();
-  } catch (error) {
-    console.error('Failed to follow startup:', error);
-    return null;
-  }
-}
 
 
 export default async function StartupPage({
@@ -70,7 +48,7 @@ export default async function StartupPage({
           <Rocket className="w-16 h-16 text-pink-700" />
         </div>
         <h1 className="text-3xl font-bold bg-gradient-to-r from-pink-700 to-amber-700 bg-clip-text text-transparent mb-4">Startup Not Found</h1>
-        <p className="text-gray-600 text-lg">The startup you're looking for doesn't exist.</p>
+        <p className="text-gray-600 text-lg">The startup you&apos;re looking for doesn&apos;t exist.</p>
       </div>
     </div>
   );
@@ -97,14 +75,15 @@ export default async function StartupPage({
 
       {/* Hero Section - Enhanced Professional Look */}
       <div className="relative min-h-screen overflow-hidden">
-        <div className="absolute inset-0 z-0">
-          <img
+        <div className="absolute inset-0 z-0 relative">
+          <Image
             src={data.image_url}
             alt="Startup Image"
-            className="w-full h-full object-cover"
+            fill
+            className="object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/60 to-black/80" />
-        
+
         </div>
 
   
@@ -219,7 +198,7 @@ export default async function StartupPage({
                   </div>
                   <div>
                     <h3 className="text-2xl font-bold text-red-900">The Challenge</h3>
-                    <p className="text-red-700 text-sm">What we're solving</p>
+                    <p className="text-red-700 text-sm">What we&apos;re solving</p>
                   </div>
                 </div>
                 <div className="prose prose-lg text-gray-700 leading-relaxed">
@@ -237,7 +216,7 @@ export default async function StartupPage({
                   </div>
                   <div>
                     <h3 className="text-2xl font-bold text-green-900">Our Solution</h3>
-                    <p className="text-green-700 text-sm">How we're changing things</p>
+                    <p className="text-green-700 text-sm">How we&apos;re changing things</p>
                   </div>
                 </div>
                 <div className="prose prose-lg text-gray-700 leading-relaxed">
@@ -286,10 +265,12 @@ export default async function StartupPage({
                 
                 <div className="mb-8">
                   <div className="mx-auto w-28 h-28 rounded-2xl border-4 border-pink-200 shadow-2xl overflow-hidden bg-gradient-to-br from-pink-200 to-purple-200 relative">
-                    <img
+                    <Image
                       src={data?.profiles?.avatar_url || "/default-avatar.png"}
-                      alt={`${data?.profiles?.full_name || "Founder"}'s avatar`}
-                      className="w-full h-full object-cover"
+                      alt={`Profile picture of ${data?.profiles?.full_name || "Founder"}`}
+                      width={112}
+                      height={112}
+                      className="object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-pink-600/20 to-transparent"></div>
                   </div>
@@ -489,7 +470,7 @@ export default async function StartupPage({
         <section className="bg-gradient-to-r from-gray-50 via-pink-50 to-amber-50 rounded-3xl p-12 shadow-xl border border-gray-100">
           <div className="text-center mb-12">
             <h3 className="text-3xl font-bold bg-gradient-to-r from-pink-700 to-amber-700 bg-clip-text text-transparent mb-4">Industry Focus & Innovation Areas</h3>
-            <p className="text-gray-600 text-lg">The sectors we're transforming</p>
+            <p className="text-gray-600 text-lg">The sectors we&apos;re transforming</p>
           </div>
           <div className="flex flex-wrap justify-center gap-4">
             {(typeof data.tags === 'string' ? data.tags.split(',') : Array.isArray(data.tags) ? data.tags : []).map((tag: string, index: number) => (
@@ -511,7 +492,7 @@ export default async function StartupPage({
           
           <div className="relative p-16 text-center text-white">
             <h2 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
-              Ready to Join Our <span className="text-yellow-300">Revolution?</span>
+              Ready to Join Our <span className="text-yellow-300">Revolution?&apos;</span>
             </h2>
             <p className="text-xl md:text-2xl mb-12 text-white/90 max-w-3xl mx-auto leading-relaxed">
               Be part of something extraordinary. Connect with us and help shape the future of innovation.
@@ -606,9 +587,9 @@ export default async function StartupPage({
             <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
             
             <div className="relative z-10">
-              <h3 className="text-3xl font-bold mb-6">Let's Connect</h3>
+            <h3 className="text-3xl font-bold mb-6">Let&apos;s Connect</h3>
               <p className="text-white/90 mb-8 text-lg leading-relaxed">
-                Ready to discuss partnerships, investments, or just want to learn more about our journey?
+                Ready to discuss partnerships, investments, or just want to learn more about our journey?&apos;
               </p>
               
               <div className="space-y-4">

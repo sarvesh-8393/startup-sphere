@@ -51,7 +51,7 @@ export async function POST(req: Request) {
   let image_url = image_url_direct;
 
   if (!image_url && imageFile) {
-    const { data, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('startup-images')
       .upload(slug, imageFile, {
         cacheControl: '3600',

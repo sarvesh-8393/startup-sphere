@@ -4,36 +4,7 @@
 
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
-import Navbar from "@/components/Navbar";
-import { LinkedinIcon, Twitter, Globe, Target, Trophy, Users, Lightbulb, Rocket, Award, TrendingUp, Heart, ExternalLink, ArrowRight, Star, Calendar, Bell, Check } from "lucide-react";
-
-interface StartupData {
-  name: string;
-  slug: string;
-  short_description: string;
-  image_url: string;
-  website_url: string;
-  account_details?: string;
-  mission_statement?: string;
-  problem_solution?: string;
-  description: string;
-  founder_story?: string;
-  target_market?: string;
-  traction?: string;
-  team_profiles?: string;
-  use_of_funds?: string;
-  milestones?: string;
-  awards?: string;
-  funding_stage: string;
-  tags: string | string[];
-  profiles?: {
-    avatar_url?: string;
-    full_name?: string;
-    description?: string;
-    linkedin_url?: string;
-    website_url?: string;
-  };
-}
+import { Bell, Check } from "lucide-react";
 
 // Follow Button Component
 function FollowButton({ slug }: { slug: string }) {

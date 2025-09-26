@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { LinkIcon, Briefcase, ChevronDown, Wallet, Target, Trophy, Users, Lightbulb } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -89,10 +89,10 @@ export default function AddStartupPage() {
       setIsEditing(true);
       loadStartupData(editId);
     }
-  }, [searchParams]);
+  }, [searchParams, loadStartupData]);
 
   // Load existing startup data for editing
-  const loadStartupData = async (identifier: string) => {
+  const loadStartupData = useCallback(async (identifier: string) => {
     setIsLoading(true);
     try {
       // Try by slug first, then by ID if that fails
@@ -144,7 +144,7 @@ export default function AddStartupPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [router]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

@@ -3,7 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { supabase } from "@/lib/supabaseClient";
 import { NextResponse } from "next/server";
 
-export async function POST(req: Request) {
+export async function POST() {
   const session = await getServerSession(authOptions);
   const user = session?.user;
 

@@ -5,11 +5,11 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 
-import { supabase } from "@/lib/supabaseClient"; // make sure this exists and exports a server-capable client
+
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
 import AllStartup from "@/components/AllStartup";
-import StartupCard from "@/components/StartupCard";
+import StartupCard, { type Startup } from "@/components/StartupCard";
 
 type Props = { searchParams?: Promise<{ query?: string; tags?: string; stage?: string; location?: string; sort?: string }> };
 
@@ -42,12 +42,12 @@ export default async function Page({ searchParams }: Props) {
   const host = headersList.get('host') || 'localhost:3000';
   const baseUrl = `${protocol}://${host}`;
 
-  let startups: unknown[] = [];
+  let startups: Startup[] = [];
   try {
     const res = await fetch(`${baseUrl}/api/startup?${params.toString()}`);
     if (res.ok) {
       const data = await res.json();
-      startups = Array.isArray(data) ? data : [];
+      startups = Array.isArray(data) ? data as Startup[] : [];
     } else {
       const text = await res.text();
       console.error('API error:', res.status, text);

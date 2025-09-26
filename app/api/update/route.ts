@@ -112,7 +112,7 @@ export async function PUT(req: Request) {
   
 
     // Step 3: Update the startup (include fields only if changed/valid)
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       name,
       short_description,
       description,
