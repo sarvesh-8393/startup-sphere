@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { LinkIcon, Briefcase, ChevronDown, Wallet, Target, Trophy, Users, Lightbulb } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 
 const INDUSTRY_TAGS = [
   'ai', 'saas', 'fintech', 'healthtech', 'e-commerce',
@@ -74,23 +75,6 @@ export default function AddStartupPage() {
     textarea.style.height = textarea.scrollHeight + 'px';
   };
 
-  // Auto-resize all textareas when formData changes
-  useEffect(() => {
-    const textareas = document.querySelectorAll('textarea');
-    textareas.forEach(textarea => {
-      autoResize(textarea as HTMLTextAreaElement);
-    });
-  }, [formData]);
-
-  // Check if we're in edit mode and load existing data
-  useEffect(() => {
-    const editId = searchParams.get('edit');
-    if (editId) {
-      setIsEditing(true);
-      loadStartupData(editId);
-    }
-  }, [searchParams, loadStartupData]);
-
   // Load existing startup data for editing
   const loadStartupData = useCallback(async (identifier: string) => {
     setIsLoading(true);
@@ -145,6 +129,15 @@ export default function AddStartupPage() {
       setIsLoading(false);
     }
   }, [router]);
+
+  // Check if we're in edit mode and load existing data
+  useEffect(() => {
+    const editId = searchParams.get('edit');
+    if (editId) {
+      setIsEditing(true);
+      loadStartupData(editId);
+    }
+  }, [searchParams, loadStartupData]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -504,7 +497,7 @@ export default function AddStartupPage() {
                 <label className='block text-sm font-medium text-pink-950 mb-2'>Startup Logo or Related Image</label>
                 <div className='mt-2 flex items-center gap-x-6'>
                   {logoPreview ? (
-                    <img src={logoPreview} alt="Logo Preview" className="h-20 w-20 rounded-full object-cover border-2 border-pink-200" />
+                    <Image src={logoPreview} alt="Logo Preview" className="h-20 w-20 rounded-full object-cover border-2 border-pink-200" width={80} height={80} />
                   ) : (
                     <div className='h-20 w-20 flex justify-center items-center rounded-full bg-gradient-to-br from-pink-100 to-amber-100'>
                       <Briefcase className='h-10 w-10 text-pink-600' />

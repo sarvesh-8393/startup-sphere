@@ -8,8 +8,41 @@ import EditButton from "@/components/EditButton";
 import ViewTrackerClient from "./ViewTrackerClient";
 import { supabase } from "@/lib/supabaseClient";
 
+interface Profile {
+  avatar_url?: string;
+  full_name?: string;
+  description?: string;
+  linkedin_url?: string;
+  website_url?: string;
+}
 
-async function getStartup(slug: string): Promise<Record<string, unknown> | null> {
+interface StartupData {
+  id: string;
+  slug: string;
+  name: string;
+  image_url: string;
+  funding_stage: string;
+  short_description: string;
+  website_url: string;
+  account_details?: string;
+  mission_statement?: string;
+  problem_solution?: string;
+  description: string;
+  profiles?: Profile;
+  founder_story?: string;
+  target_market?: string;
+  traction?: string;
+  team_profiles?: string;
+  use_of_funds?: string;
+  milestones?: string;
+  awards?: string;
+  tags?: string | string[];
+  founder_id: string;
+  likes: number;
+  views: number;
+}
+
+async function getStartup(slug: string): Promise<StartupData | null> {
   try {
     const { data, error } = await supabase
       .from('startups')
@@ -38,7 +71,7 @@ export default async function StartupPage({
   params: Promise<{ slug: string }>;
 }) {
   const p = await params;
-  const data = await getStartup(p.slug);
+  const data = await getStartup(p.slug) as StartupData;
   console.log(data?.likes)
 
   if (!data) return (
@@ -77,7 +110,7 @@ export default async function StartupPage({
       <div className="relative min-h-screen overflow-hidden">
         <div className="absolute inset-0 z-0 relative">
           <Image
-            src={data.image_url}
+            src={data.image_url as string}
             alt="Startup Image"
             fill
             className="object-cover"
@@ -96,7 +129,7 @@ export default async function StartupPage({
 
 
               <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-              <span className="text-white font-semibold text-sm uppercase tracking-wide">{data.funding_stage} Stage</span>
+              <span className="text-white font-semibold text-sm uppercase tracking-wide">{data.funding_stage as string} Stage</span>
             </div>
             
             <h1 className="text-5xl md:text-8xl font-black drop-shadow-2xl bg-gradient-to-r from-white via-pink-100 to-amber-100 bg-clip-text text-transparent mb-8 leading-tight">
@@ -147,7 +180,7 @@ export default async function StartupPage({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
               <div className="space-y-2">
                 <div className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-amber-600 bg-clip-text text-transparent">
-                  {data.funding_stage}
+                  {data.funding_stage as string}
                 </div>
                 <div className="text-gray-600 font-medium">Funding Stage</div>
               </div>
@@ -566,7 +599,7 @@ export default async function StartupPage({
                 <TrendingUp className="w-8 h-8 text-white" />
               </div>
               <div className="text-2xl font-bold text-gray-800 mb-2">Stage</div>
-              <div className="text-gray-600">{data.funding_stage}</div>
+              <div className="text-gray-600">{data.funding_stage as string}</div>
             </div>
             
             <div className="text-center p-6 bg-gradient-to-br from-purple-50 to-violet-50 rounded-2xl">

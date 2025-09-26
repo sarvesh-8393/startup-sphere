@@ -2,7 +2,6 @@
 
 import { getProviders, signIn } from "next-auth/react";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 
 type Provider = {
   id: string;
@@ -14,7 +13,6 @@ type Provider = {
 
 export default function LoginPage() {
   const [providers, setProviders] = useState<Record<string, Provider> | null>(null);
-  const router = useRouter();
 
   useEffect(() => {
     const fetchProviders = async () => {

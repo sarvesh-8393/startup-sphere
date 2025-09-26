@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 
-interface Startup {
+export interface Startup {
   id: string;
   slug: string;
   created_at: string;
