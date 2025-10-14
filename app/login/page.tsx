@@ -27,7 +27,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-yellow-50 to-purple-50 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-yellow-50 to-purple-50 flex items-center justify-center p-6 pt-20">
       <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-8 shadow-2xl max-w-md w-full">
         <h1 className="text-3xl font-bold text-center text-gray-800 mb-6">
           Welcome to YC Directory

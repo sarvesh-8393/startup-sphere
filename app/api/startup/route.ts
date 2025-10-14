@@ -1,26 +1,201 @@
-// app/api/home/route.ts
+// app/api/startup/route.ts
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
+
+// TypeScript interfaces
+interface Profile {
+  full_name: string | null;
+  avatar_url: string | null;
+}
+
+interface Startup {
+  id: string;
+  name: string;
+  short_description: string;
+  description: string;
+  tags: string[] | null;
+  website_url: string | null;
+  created_at: string;
+  founder_id: string | null;
+  image_url: string | null;
+  slug: string | null;
+  likes: number | null;
+  views: number | null;
+  funding_stage: string | null;
+  location: string | null;
+}
+
+interface StartupWithProfile extends Startup {
+  profiles: Profile[] | null;
+}
+
+interface StartupWithScore extends StartupWithProfile {
+  score: number;
+}
+
+interface UserPreferences {
+  tags: string[] | null;
+  stage: string | null;
+  location: string | null;
+}
 
 /**
  * GET /api/home?email=user@example.com[&query=searchText]
  *
- * Returns startups filtered by user's preferences and sorted by the
- * number of matching tags (highest matches first). Also applies optional
+ * Returns startups filtered by user's preferences and sorted by a
+ * composite score (tag matches, popularity, recency). Also applies optional
  * stage & location filters from preferences. If user has no preferences,
  * returns all startups (recent first).
  */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
+    const founderId = searchParams.get("founder_id");
     const userEmail = searchParams.get("email");
     const textQuery = searchParams.get("query") ?? "";
+    const tagsFilter = (searchParams.get("tags") || "")
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
 
-    if (!userEmail) {
+    if (!founderId && !userEmail) {
       return NextResponse.json(
-        { error: "Missing required query param: email" },
+        { error: "Missing required query param: founder_id or email" },
         { status: 400 }
       );
+    }
+
+    // If founder_id is provided, filter by founder's startups
+    if (founderId) {
+      let base = supabase
+        .from("startups")
+        .select(`
+          id,
+          name,
+          short_description,
+          description,
+          tags,
+          website_url,
+          created_at,
+          founder_id,
+          image_url,
+          slug,
+          likes,
+          views,
+          profiles ( full_name, avatar_url )
+        `)
+        .eq("founder_id", founderId);
+
+      // request-level filters
+      const stageFilter = searchParams.get("stage");
+      const locationFilter = searchParams.get("location");
+
+      if (stageFilter) base = base.eq("funding_stage", stageFilter);
+      if (locationFilter) base = base.eq("location", locationFilter);
+      if (tagsFilter.length > 0) base = base.overlaps("tags", tagsFilter);
+
+      // search
+      if (textQuery) {
+        const tokens = textQuery.split(/\s+/).map((t) => t.trim()).filter(Boolean);
+        if (tokens.length > 0) {
+          const curly = `{${tokens.map((t) => t.replace(/'/g, "''")).join(",")}}`;
+          base = base.or(`name.ilike.%${textQuery}%,tags.ov.${curly}`);
+        } else {
+          base = base.ilike("name", `%${textQuery}%`);
+        }
+      }
+
+      // apply sort param
+      const sortParam = (searchParams.get("sort") || "").toString();
+      if (sortParam === "date_asc") {
+        base = base.order("created_at", { ascending: true });
+      } else if (sortParam === "date_desc") {
+        base = base.order("created_at", { ascending: false });
+      } else if (sortParam === "likes_asc") {
+        base = base.order("likes", { ascending: true });
+      } else if (sortParam === "likes_desc") {
+        base = base.order("likes", { ascending: false });
+      } else if (sortParam === "views_asc") {
+        base = base.order("views", { ascending: true });
+      } else if (sortParam === "views_desc") {
+        base = base.order("views", { ascending: false });
+      } else {
+        // default ordering recent
+        base = base.order("created_at", { ascending: false });
+      }
+
+      const { data: founderStartups, error: founderErr } = await base;
+
+      if (founderErr) {
+        return NextResponse.json({ error: founderErr.message }, { status: 500 });
+      }
+      return NextResponse.json(founderStartups);
+    }
+
+    // If query or tags filter is provided, ignore preferences and search all startups
+    if (textQuery || tagsFilter.length > 0) {
+      let base = supabase
+        .from("startups")
+        .select(`
+          id,
+          name,
+          short_description,
+          description,
+          tags,
+          website_url,
+          created_at,
+          founder_id,
+          image_url,
+          slug,
+          likes,
+          views,
+          profiles ( full_name, avatar_url )
+        `);
+
+      // request-level filters
+      const stageFilter = searchParams.get("stage");
+      const locationFilter = searchParams.get("location");
+
+      if (stageFilter) base = base.eq("funding_stage", stageFilter);
+      if (locationFilter) base = base.eq("location", locationFilter);
+      if (tagsFilter.length > 0) base = base.overlaps("tags", tagsFilter);
+
+      // search
+      if (textQuery) {
+        const tokens = textQuery.split(/\s+/).map((t) => t.trim()).filter(Boolean);
+        if (tokens.length > 0) {
+          const curly = `{${tokens.map((t) => t.replace(/'/g, "''")).join(",")}}`;
+          base = base.or(`name.ilike.%${textQuery}%,tags.ov.${curly}`);
+        } else {
+          base = base.ilike("name", `%${textQuery}%`);
+        }
+      }
+
+      // apply sort param
+      const sortParam = (searchParams.get("sort") || "").toString();
+      if (sortParam === "date_asc") {
+        base = base.order("created_at", { ascending: true });
+      } else if (sortParam === "date_desc") {
+        base = base.order("created_at", { ascending: false });
+      } else if (sortParam === "likes_asc") {
+        base = base.order("likes", { ascending: true });
+      } else if (sortParam === "likes_desc") {
+        base = base.order("likes", { ascending: false });
+      } else if (sortParam === "views_asc") {
+        base = base.order("views", { ascending: true });
+      } else if (sortParam === "views_desc") {
+        base = base.order("views", { ascending: false });
+      } else {
+        // default ordering recent
+        base = base.order("created_at", { ascending: false });
+      }
+
+      const { data: allStartups, error: allErr } = await base;
+
+      if (allErr) {
+        return NextResponse.json({ error: allErr.message }, { status: 500 });
+      }
+      return NextResponse.json(allStartups);
     }
 
     // 1) Resolve profile id from email
@@ -30,7 +205,7 @@ export async function GET(request: Request) {
       .eq("email", userEmail)
       .single();
 
-    let prefs: { tags: string[] | null, stage: string | null, location: string | null } | null = null;
+    let prefs: UserPreferences | null = null;
     let prefsError: unknown = null;
     if (profile) {
       // 2) Get user preferences
@@ -43,7 +218,7 @@ export async function GET(request: Request) {
       prefsError = prefsErr;
     }
 
-    // If no preferences, return all startups (optionally filtered by query)
+    // If no preferences, return all startups
     if (prefsError || !prefs) {
       let base = supabase
         .from("startups")
@@ -66,10 +241,6 @@ export async function GET(request: Request) {
       // request-level filters
       const stageFilter = searchParams.get("stage");
       const locationFilter = searchParams.get("location");
-      const tagsFilter = (searchParams.get("tags") || "")
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean);
 
       if (stageFilter) base = base.eq("funding_stage", stageFilter);
       if (locationFilter) base = base.eq("location", locationFilter);
@@ -78,8 +249,12 @@ export async function GET(request: Request) {
       // search
       if (textQuery) {
         const tokens = textQuery.split(/\s+/).map((t) => t.trim()).filter(Boolean);
-        if (tokens.length > 0) base = base.ilike("name", `%${textQuery}%`).overlaps("tags", tokens);
-        else base = base.ilike("name", `%${textQuery}%`);
+        if (tokens.length > 0) {
+          const curly = `{${tokens.map((t) => t.replace(/'/g, "''")).join(",")}}`;
+          base = base.or(`name.ilike.%${textQuery}%,tags.ov.${curly}`);
+        } else {
+          base = base.ilike("name", `%${textQuery}%`);
+        }
       }
 
       // apply sort param
@@ -148,7 +323,7 @@ export async function GET(request: Request) {
     let dbQuery = supabase
       .from("startups")
       .select(
-        `id, name, short_description, description, tags, website_url, created_at, founder_id, image_url, slug, likes, views, profiles ( full_name, avatar_url )`
+        `id, name, short_description, description, tags, website_url, created_at, founder_id, image_url, slug, likes, views, funding_stage, location, profiles ( full_name, avatar_url )`
       )
       .overlaps("tags", userTags);
 
@@ -163,11 +338,6 @@ export async function GET(request: Request) {
     // apply request-level filters (overrides/augments prefs)
     const stageFilter = searchParams.get("stage");
     const locationFilter = searchParams.get("location");
-
-    const tagsFilter = (searchParams.get("tags") || "")
-      .split(",")
-      .map((t) => t.trim())
-      .filter(Boolean);
 
     if (stageFilter) dbQuery = dbQuery.eq("funding_stage", stageFilter);
     if (locationFilter) dbQuery = dbQuery.eq("location", locationFilter);
@@ -218,73 +388,90 @@ export async function GET(request: Request) {
     const { data: startups, error } = await dbQuery;
 
     if (error) {
-      console.error("Error fetching matched startups:", error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Compute match_count in JS and sort if needed
-    const startupsWithMatch = startups.map((startup: Record<string, unknown>) => {
-      const matchCount = (startup.tags as string[]) ? (startup.tags as string[]).filter((tag: string) => userTags.includes(tag)).length : 0;
-      return { ...startup, match_count: matchCount };
+    // Compute composite score in JS and sort if needed
+    // Weights for composite score
+    const w_tag = 0.5;
+    const w_likes = 0.2;
+    const w_views = 0.1;
+    const w_recency = 0.2;
+
+    // Find max likes and views for normalization
+    const maxLikes = Math.max(...startups.map((s) => s.likes ?? 0));
+    const maxViews = Math.max(...startups.map((s) => s.views ?? 0));
+
+    const startupsWithScore: StartupWithScore[] = startups.map((startup) => {
+      const matchCount = (startup.tags ?? []).filter((tag: string) => userTags.includes(tag)).length;
+      const normalizedLikes = maxLikes > 0 ? (startup.likes ?? 0) / maxLikes : 0;
+      const normalizedViews = maxViews > 0 ? (startup.views ?? 0) / maxViews : 0;
+      const daysSinceCreated = (new Date().getTime() - new Date(startup.created_at).getTime()) / (1000 * 60 * 60 * 24);
+      const recencyScore = 1 / (daysSinceCreated + 1);
+      const score = w_tag * matchCount + w_likes * normalizedLikes + w_views * normalizedViews + w_recency * recencyScore;
+      return { ...startup, score };
     });
 
-    let sortedStartups = startupsWithMatch;
+    let sortedStartups = startupsWithScore;
 
     if (orderByMatch) {
-      sortedStartups = [...startupsWithMatch].sort((a: Record<string, unknown>, b: Record<string, unknown>) => (b.match_count as number) - (a.match_count as number));
+      sortedStartups = [...startupsWithScore].sort((a, b) => b.score - a.score);
     }
 
-    // If no startups match preferences, return all startups with applied sorting
-    if (startupsWithMatch.length === 0) {
+    // If no startups match preferences, score all startups instead
+    if (startupsWithScore.length === 0) {
       let allQuery = supabase
         .from("startups")
-        .select(`
-          id,
-          name,
-          short_description,
-          description,
-          tags,
-          website_url,
-          created_at,
-          founder_id,
-          image_url,
-          slug,
-          likes,
-          views,
-          profiles ( full_name, avatar_url )
-        `);
+        .select(
+          `id, name, short_description, description, tags, website_url, created_at, founder_id, image_url, slug, likes, views, funding_stage, location, profiles ( full_name, avatar_url )`
+        );
 
-      // apply sort param to fallback
-      const sortParam = (searchParams.get("sort") || "").toString();
-      if (sortParam === "date_asc") {
-        allQuery = allQuery.order("created_at", { ascending: true });
-      } else if (sortParam === "date_desc") {
-        allQuery = allQuery.order("created_at", { ascending: false });
-      } else if (sortParam === "likes_asc") {
-        allQuery = allQuery.order("likes", { ascending: true });
-      } else if (sortParam === "likes_desc") {
-        allQuery = allQuery.order("likes", { ascending: false });
-      } else if (sortParam === "views_asc") {
-        allQuery = allQuery.order("views", { ascending: true });
-      } else if (sortParam === "views_desc") {
-        allQuery = allQuery.order("views", { ascending: false });
-      } else {
-        // default ordering recent
-        allQuery = allQuery.order("created_at", { ascending: false });
+      // apply request-level filters
+      if (stageFilter) allQuery = allQuery.eq("funding_stage", stageFilter);
+      if (locationFilter) allQuery = allQuery.eq("location", locationFilter);
+      if (tagsFilter.length > 0) {
+        const safe = tagsFilter.map((t) => t.replace(/'/g, "''"));
+        allQuery = allQuery.overlaps("tags", safe);
+      }
+
+      // apply search
+      if (textQuery) {
+        const tokens = textQuery.split(/\s+/).map((t) => t.trim()).filter(Boolean);
+        if (tokens.length > 0) {
+          const curly = `{${tokens.map((t) => t.replace(/'/g, "''")).join(",")}}`;
+          allQuery = allQuery.or(`name.ilike.%${textQuery}%,tags.ov.${curly}`);
+        } else {
+          allQuery = allQuery.ilike("name", `%${textQuery}%`);
+        }
       }
 
       const { data: allStartups, error: allErr } = await allQuery;
 
       if (allErr) {
-        console.error("Error fetching all startups:", allErr);
         return NextResponse.json({ error: allErr.message }, { status: 500 });
       }
-      return NextResponse.json(allStartups, { status: 200 });
+
+      // Compute scores for all startups
+      const maxLikesAll = Math.max(...allStartups.map((s) => s.likes ?? 0));
+      const maxViewsAll = Math.max(...allStartups.map((s) => s.views ?? 0));
+
+      const allWithScore: StartupWithScore[] = allStartups.map((startup) => {
+        const startupTags = startup.tags ?? [];
+        const matchCount = startupTags.filter((tag: string) => userTags.some((userTag: string) => userTag.toLowerCase() === tag.toLowerCase())).length;
+        const normalizedLikes = maxLikesAll > 0 ? (startup.likes ?? 0) / maxLikesAll : 0;
+        const normalizedViews = maxViewsAll > 0 ? (startup.views ?? 0) / maxViewsAll : 0;
+        const daysSinceCreated = (new Date().getTime() - new Date(startup.created_at).getTime()) / (1000 * 60 * 60 * 24);
+        const recencyScore = 1 / (daysSinceCreated + 1);
+        const score = w_tag * matchCount + w_likes * normalizedLikes + w_views * normalizedViews + w_recency * recencyScore;
+        return { ...startup, score };
+      });
+
+      const sortedAll = [...allWithScore].sort((a, b) => b.score - a.score);
+      return NextResponse.json(sortedAll, { status: 200 });
     }
 
     return NextResponse.json(sortedStartups, { status: 200 });
   } catch (err: unknown) {
-    console.error("Server error in /api/home:", err);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

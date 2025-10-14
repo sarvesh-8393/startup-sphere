@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import { supabase } from "@/lib/supabaseClient";
 import Dashboard from "@/components/Dashboard";
 
 interface Startup {
@@ -35,8 +36,20 @@ export default async function DashboardPage({ searchParams }: Props) {
   }
   const userEmail = session.user.email;
 
+  // Fetch the user's profile ID from email
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("email", userEmail)
+    .single();
+
+  if (!profile) {
+    // Handle case where profile not found, perhaps redirect or error
+    redirect("/login");
+  }
+
   const params = new URLSearchParams();
-  params.set('email', userEmail);
+  params.set('founder_id', profile.id);
   if (query) params.set('query', query);
   if (stageFilter) params.set('stage', stageFilter);
   if (locationFilter) params.set('location', locationFilter);

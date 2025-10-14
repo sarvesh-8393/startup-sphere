@@ -30,7 +30,7 @@ const StartupCard: React.FC<Props> = ({ startups }) => {
   const router = useRouter();
 
   return (
-    <div className="flex justify-center items-start px-4">
+    <div className="flex justify-center items-start px-2 sm:px-4 pb-40">
       <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {startups.map((items: Startup) => (
           <li
@@ -40,7 +40,7 @@ const StartupCard: React.FC<Props> = ({ startups }) => {
           >
             {/* Date and Views */}
             <div className="w-full flex justify-between text-gray-600">
-              <p className="text-lg">
+              <p className="text-sm sm:text-lg">
                 {new Date(items.created_at).toLocaleDateString('en-us', {
                   year: 'numeric',
                   month: 'long',
@@ -48,8 +48,8 @@ const StartupCard: React.FC<Props> = ({ startups }) => {
                 })}
               </p>
               <div className="flex items-center gap-1 text-gray-700">
-                <EyeIcon className="h-5 w-5 text-amber-500" />
-                <p className="font-semibold">{items.views ?? 0}</p>
+                <EyeIcon className="h-4 w-4 sm:h-5 sm:w-5 text-amber-500" />
+                <p className="font-semibold text-sm sm:text-base">{items.views ?? 0}</p>
               </div>
             </div>
 
@@ -69,13 +69,13 @@ const StartupCard: React.FC<Props> = ({ startups }) => {
                 <div className="px-3 py-1 bg-pink-100 rounded-4xl group-hover:bg-amber-50 transition-all duration-300">
                   <Link
                     href={`/startup/${items.slug}`}
-                    className="font-bold text-2xl"
+                    className="font-bold text-lg sm:text-2xl"
                   >
                     {items.name}
                   </Link>
                 </div>
                 <Link
-                  href={`/user/${items.founder_id}`}
+                  href={`/founder-details/profile?id=${items.founder_id}`}
                    onClick={(e) => e.stopPropagation()}
                   className="p-1 text-md hover:underline hover:text-blue-600"
                 >
@@ -85,7 +85,7 @@ const StartupCard: React.FC<Props> = ({ startups }) => {
 
               {/* Founder Image */}
               <Link
-                href={`/user/${items.founder_id}`}
+                href={`/founder-details/profile?id=${items.founder_id}`}
                 className="w-15 h-15 overflow-hidden rounded-full"
                  onClick={(e) => e.stopPropagation()}
               >

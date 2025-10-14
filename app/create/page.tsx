@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, Suspense } from 'react';
 import { LinkIcon, Briefcase, ChevronDown, Wallet, Target, Trophy, Users, Lightbulb } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -34,6 +34,9 @@ type FormDataType = {
   milestones: string;
   team_profiles: string;
   awards: string;
+  location: string;  // Added location field
+  update_message: string; // Added for custom update message
+  follower_message: string; // Added for message to followers
 };
 
 export default function AddStartupPage() {
@@ -58,6 +61,9 @@ export default function AddStartupPage() {
     milestones: '',
     team_profiles: '',
     awards: '',
+    location: '',  // Initialize location
+    update_message: '', // Initialize update message
+    follower_message: '', // Initialize follower message
   });
 
   const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
@@ -113,6 +119,9 @@ export default function AddStartupPage() {
         milestones: startupData.milestones || '',
         team_profiles: startupData.team_profiles || '',
         awards: startupData.awards || '',
+        location: startupData.location || '',  // Added location
+        update_message: '', // Initialize update message for editing
+        follower_message: '', // Initialize follower message for editing
       });
 
       // Set logo preview if image_url exists
@@ -185,6 +194,7 @@ export default function AddStartupPage() {
     });
   };
 
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
@@ -203,9 +213,7 @@ export default function AddStartupPage() {
       }
     });
 
-  
-  
-   
+
 
    try {
     const endpoint = isEditing ? '/api/update' : '/api/create';
@@ -259,6 +267,9 @@ export default function AddStartupPage() {
         milestones: '',
         team_profiles: '',
         awards: '',
+        location: '',  // Reset location
+        update_message: '', // Reset update message
+        follower_message: '', // Reset follower message
       });
       setLogoPreview('');
     }
@@ -278,8 +289,8 @@ export default function AddStartupPage() {
 
 
   return (
-    <div className='min-h-screen bg-gradient-to-br from-pink-50 to-amber-50'>
-      <main className='py-10 px-4 sm:px-6 lg:px-8'>
+    <div className='min-h-screen'>
+      <main className='pt-32 pb-10 px-4 sm:px-6 lg:px-8'>
         <div className='max-w-4xl mx-auto bg-white p-8 md:p-12 rounded-2xl shadow-lg border border-pink-100'>
 
           <div className='mb-10 text-center'>
@@ -478,18 +489,18 @@ export default function AddStartupPage() {
             {/* Section 6: Additional Details */}
             <div className='space-y-6'>
               <h2 className='text-xl font-semibold text-pink-900 mb-4'>Additional Details</h2>
-              
+
               <div>
                 <label htmlFor='description' className='block text-sm font-medium text-pink-950 mb-1'>Detailed Description</label>
-                <textarea 
-                  id='description' 
-                  name='description' 
-                  value={formData.description} 
+                <textarea
+                  id='description'
+                  name='description'
+                  value={formData.description}
                   onChange={handleChange}
                   className='w-full px-4 py-3 bg-white border border-pink-300/80 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:border-pink-500 focus:ring-4 focus:ring-pink-500/30 transition-all resize-none overflow-hidden min-h-[120px]'
                   rows={1}
                   placeholder='What we do: Brief overview. How it works: Step-by-step process. Why now: Market timing and opportunity'
-                  required 
+                  required
                 />
               </div>
 
@@ -508,14 +519,50 @@ export default function AddStartupPage() {
                     <input id='image_file' name='image_file' type='file' className='sr-only' onChange={handleFileChange} accept='image/png, image/jpeg, image/svg+xml' />
                   </label>
                   <p className="text-sm text-gray-500 font-medium">OR</p>
-                  <input type="text" id='image_url' name="image_url" value={formData.image_url} className='min-w-[300px] px-4 py-3 bg-white border border-pink-300/80 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:border-pink-500 focus:ring-4 focus:ring-pink-500/30 transition-all' 
+                  <input type="text" id='image_url' name="image_url" value={formData.image_url} className='min-w-[300px] px-4 py-3 bg-white border border-pink-300/80 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:border-pink-500 focus:ring-4 focus:ring-pink-500/30 transition-all'
                    placeholder='Paste Image url here' onChange={handleChange} />
                 </div>
               </div>
             </div>
 
+            {/* Section 7: Follower Update Message (Only for Editing) */}
+            {isEditing && (
+              <div className='p-6 border-l-4 border-green-400 bg-gradient-to-r from-green-50/30 to-pink-50/30 rounded-r-lg space-y-6'>
+                <h2 className='text-xl font-semibold text-green-900 mb-4'>Notify Your Followers</h2>
+                <div>
+                  <label htmlFor='follower_message' className='block text-sm font-medium text-green-950 mb-1'>Custom Message to Followers (Optional)</label>
+                  <textarea
+                    id='follower_message'
+                    name='follower_message'
+                    value={formData.follower_message}
+                    onChange={handleChange}
+                    className='w-full px-4 py-3 bg-white border border-green-300/80 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:border-green-500 focus:ring-4 focus:ring-green-500/30 transition-all resize-none overflow-hidden min-h-[100px]'
+                    rows={1}
+                    placeholder='Share what&apos;s new with your startup updates...'
+                  />
+                  <p className='text-sm text-gray-600 mt-1'>This message will be sent via email to all your followers when you update your startup.</p>
+                </div>
+              </div>
+            )}
+
+
             {/* Section 7: Tags and Funding */}
             <div className='grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8'>
+              {/* Location */}
+              <div>
+                <label htmlFor='location' className='block text-sm font-medium text-pink-950 mb-1'>Location</label>
+                <input
+                  type='text'
+                  id='location'
+                  name='location'
+                  value={formData.location}
+                  onChange={handleChange}
+                  className='w-full px-4 py-3 bg-white border border-pink-300/80 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:border-pink-500 focus:ring-4 focus:ring-pink-500/30 transition-all'
+                  placeholder='City, State, Country'
+                  required
+                />
+              </div>
+
               {/* Tags */}
               <div className='md:col-span-2' ref={tagsDropdownRef}>
                 <label className='block text-sm font-medium text-pink-950 mb-1'>Select Tags</label>

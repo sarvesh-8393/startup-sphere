@@ -76,7 +76,7 @@ const TagSelector: React.FC<TagSelectorProps> = ({
   };
 
   return (
-    <div className="relative w-full" ref={dropdownRef}>
+    <div className="relative w-full max-w-sm sm:max-w-md" ref={dropdownRef}>
       {/* Selected Tags */}
       {selectedTags.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-3">

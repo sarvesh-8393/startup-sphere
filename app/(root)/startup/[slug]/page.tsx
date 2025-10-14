@@ -3,17 +3,23 @@
 import Navbar from "@/components/Navbar";
 import Image from "next/image";
 import { LinkedinIcon, Twitter, Globe, Target, Users, Lightbulb, Rocket, Award, TrendingUp, Heart, ExternalLink, ArrowRight, Star, Calendar, Eye } from "lucide-react";
-import FollowButton from "./StartupPageClient";
-import EditButton from "@/components/EditButton";
+import { HeroButtons } from "./StartupPageClient";
 import ViewTrackerClient from "./ViewTrackerClient";
+import Discussion from "@/components/Discussion";
 import { supabase } from "@/lib/supabaseClient";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 interface Profile {
-  avatar_url?: string;
-  full_name?: string;
-  description?: string;
-  linkedin_url?: string;
-  website_url?: string;
+  id?: string;
+  avatar_url?: string | null;
+  full_name?: string | null;
+  description?: string | null;
+  linkedin_url?: string | null;
+  website_url?: string | null;
+  location?: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface StartupData {
@@ -24,22 +30,24 @@ interface StartupData {
   funding_stage: string;
   short_description: string;
   website_url: string;
-  account_details?: string;
-  mission_statement?: string;
-  problem_solution?: string;
+  account_details?: string | null;
+  mission_statement?: string | null;
+  problem_solution?: string | null;
   description: string;
-  profiles?: Profile;
-  founder_story?: string;
-  target_market?: string;
-  traction?: string;
-  team_profiles?: string;
-  use_of_funds?: string;
-  milestones?: string;
-  awards?: string;
-  tags?: string | string[];
+  profiles?: Profile | null;
+  founder_story?: string | null;
+  target_market?: string | null;
+  traction?: string | null;
+  team_profiles?: string | null;
+  use_of_funds?: string | null;
+  milestones?: string | null;
+  awards?: string | null;
+  tags?: string | string[] | null;
   founder_id: string;
   likes: number;
   views: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 async function getStartup(slug: string): Promise<StartupData | null> {
@@ -63,14 +71,14 @@ async function getStartup(slug: string): Promise<StartupData | null> {
   }
 }
 
-
-
 export default async function StartupPage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
   const p = await params;
+  const session = await getServerSession(authOptions);
+  const currentUserId = session?.user?.id;
   const data = await getStartup(p.slug) as StartupData;
   console.log(data?.likes)
 
@@ -87,47 +95,45 @@ export default async function StartupPage({
   );
 
   return (
-    <div className="w-full bg-gradient-to-b from-gray-50 to-white">
-      <Navbar />
+    <div className="w-full bg-gradient-to-b from-gray-50 to-white pt-20">
       <ViewTrackerClient slug={p.slug} />
-<div className="fixed bottom-4 right-4 z-50">
-      <div className="bg-black/80 backdrop-blur-sm rounded-xl border border-white/10 shadow-2xl">
-        <div className="px-4 py-3 space-y-2">
-          <div className="flex items-center space-x-2 text-white">
-            <Heart className="w-6 h-6 text-red-500 fill-red-500" />
-            <span className="font-bold text-sm">{data.likes}</span>
-          </div>
-          <div className="flex items-center space-x-2 text-white">
-            <Eye className="w-6 h-6 text-blue-400" />
-            <span className="font-bold text-sm">{data.views}</span>
+      <div className="fixed bottom-4 right-4 z-50">
+        <div className="bg-black/80 backdrop-blur-sm rounded-xl border border-white/10 shadow-2xl">
+          <div className="px-4 py-3 space-y-2">
+            <div className="flex items-center space-x-2 text-white">
+              <Heart className="w-6 h-6 text-red-500 fill-red-500" />
+              <span className="font-bold text-sm">{data.likes}</span>
+            </div>
+            <div className="flex items-center space-x-2 text-white">
+              <Eye className="w-6 h-6 text-blue-400" />
+              <span className="font-bold text-sm">{data.views}</span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-
 
       {/* Hero Section - Enhanced Professional Look */}
       <div className="relative min-h-screen overflow-hidden">
-        <div className="absolute inset-0 z-0 relative">
-          <Image
-            src={data.image_url as string}
-            alt="Startup Image"
-            fill
-            className="object-cover"
-          />
+        <div className="absolute inset-0 z-0">
+          <div className="relative w-full h-full">
+            <Image
+              src={data.image_url as string}
+              alt="Startup Image"
+              fill
+              priority={true}
+              className="object-cover"
+            />
+          </div>
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/60 to-black/80" />
-
         </div>
 
-  
+        <HeroButtons slug={p.slug} founderId={data.founder_id} currentUserId={currentUserId} initialLikes={data.likes} />
+
         <div className="relative z-10 min-h-screen px-6 md:px-16 py-20 flex flex-col items-center justify-center text-center text-white">
           <div className="animate-fade-in-up max-w-6xl mx-auto">
             
             {/* Funding Stage Badge */}
-     <div className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-br from-amber-400 to-rose-400 backdrop-blur-sm rounded-full mb-8 border border-white/20">
-
-
-
+            <div className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-br from-amber-400 to-rose-400 backdrop-blur-sm rounded-full mb-8 border border-white/20">
               <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
               <span className="text-white font-semibold text-sm uppercase tracking-wide">{data.funding_stage as string} Stage</span>
             </div>
@@ -139,8 +145,6 @@ export default async function StartupPage({
             <p className="text-xl md:text-3xl max-w-5xl drop-shadow-lg text-white/95 mb-12 leading-relaxed font-light">
               {data.short_description}
             </p>
-
-           
 
             <div className="flex flex-col sm:flex-row gap-6 justify-center">
               <a
@@ -166,36 +170,33 @@ export default async function StartupPage({
             </div>
           </div>
         </div>
-
-        {/* Enhanced Scroll Indicator */}
-        
       </div>
 
       {/* Main Content Container with improved spacing */}
       <div className="max-w-8xl mx-auto px-6 py-20 space-y-24">
 
-        {/* Company Overview Stats Bar */}
+        {/* Industry Tags Overview */}
         <section className="relative -mt-10 z-20">
           <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-8 mx-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-              <div className="space-y-2">
-                <div className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-amber-600 bg-clip-text text-transparent">
-                  {data.funding_stage as string}
-                </div>
-                <div className="text-gray-600 font-medium">Funding Stage</div>
-              </div>
-              <div className="space-y-2">
-                <div className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-amber-600 bg-clip-text text-transparent">
-                  {(typeof data.tags === 'string' ? data.tags.split(',') : Array.isArray(data.tags) ? data.tags : []).length}+
-                </div>
-                <div className="text-gray-600 font-medium">Industry Focus Areas</div>
-              </div>
-              <div className="space-y-2">
-                <div className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-amber-600 bg-clip-text text-transparent">
-                  Active
-                </div>
-                <div className="text-gray-600 font-medium">Growth Status</div>
-              </div>
+            <div className="text-center mb-6">
+              <h3 className="text-xl font-bold text-gray-800 mb-2">Industry Focus & Innovation Areas</h3>
+              <p className="text-gray-600 text-sm">The sectors we&apos;re transforming</p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-3 mb-6">
+              {(typeof data.tags === 'string' ? data.tags.split(',') : Array.isArray(data.tags) ? data.tags : []).map((tag: string, index: number) => (
+                <span key={index} className="px-4 py-2 bg-gradient-to-r from-pink-100 to-amber-100 hover:from-pink-200 hover:to-amber-200 border border-pink-200 hover:border-pink-300 rounded-xl text-pink-800 font-semibold shadow-md hover:shadow-lg transition-all duration-300 text-sm capitalize">
+                  {typeof tag === 'string' ? tag.trim() : String(tag)}
+                </span>
+              ))}
+            </div>
+            <div className="text-center">
+              <a
+                href={`/payment/${data.slug}`}
+                className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-pink-600 to-amber-600 hover:from-pink-700 hover:to-amber-700 text-white font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+              >
+                <Heart className="w-5 h-5" />
+                Fund Us
+              </a>
             </div>
           </div>
         </section>
@@ -309,9 +310,14 @@ export default async function StartupPage({
                   </div>
                 </div>
 
-                <h4 className="text-xl font-bold text-pink-800 mb-2">
-                  {data?.profiles?.full_name || "Visionary Founder"}
-                </h4>
+                <a
+                  href={`/founder-details/profile?id=${data.founder_id}`}
+                  className="group block"
+                >
+                  <h4 className="text-xl font-bold text-pink-800 mb-2 group-hover:text-pink-600 transition-colors">
+                    {data?.profiles?.full_name || "Visionary Founder"}
+                  </h4>
+                </a>
                 <p className="text-pink-600 text-sm font-medium mb-6">Founder & CEO</p>
 
                 <p className="text-gray-600 text-sm mb-8 leading-relaxed">
@@ -499,179 +505,40 @@ export default async function StartupPage({
           )}
         </section>
 
-        {/* Enhanced Industry Tags Section */}
-        <section className="bg-gradient-to-r from-gray-50 via-pink-50 to-amber-50 rounded-3xl p-12 shadow-xl border border-gray-100">
-          <div className="text-center mb-12">
-            <h3 className="text-3xl font-bold bg-gradient-to-r from-pink-700 to-amber-700 bg-clip-text text-transparent mb-4">Industry Focus & Innovation Areas</h3>
-            <p className="text-gray-600 text-lg">The sectors we&apos;re transforming</p>
-          </div>
-          <div className="flex flex-wrap justify-center gap-4">
-            {(typeof data.tags === 'string' ? data.tags.split(',') : Array.isArray(data.tags) ? data.tags : []).map((tag: string, index: number) => (
-              <span key={index} className="px-6 py-3 bg-white hover:bg-gradient-to-r hover:from-pink-50 hover:to-amber-50 border border-gray-200 hover:border-pink-300 rounded-2xl text-gray-700 font-semibold shadow-lg hover:shadow-xl transition-all duration-300 text-lg capitalize">
-                {typeof tag === 'string' ? tag.trim() : String(tag)}
-              </span>
-            ))}
-          </div>
-        </section>
 
-        {/* Enhanced Call to Action - Premium Design */}
-        <section className="relative overflow-hidden rounded-3xl shadow-2xl">
+
+        {/* Simplified Call to Action */}
+        <section className="relative overflow-hidden rounded-2xl shadow-xl">
           <div className="absolute inset-0 bg-gradient-to-r from-pink-600 via-purple-600 to-amber-600"></div>
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/10 to-black/20"></div>
-          
-          {/* Animated background elements */}
-          <div className="absolute top-10 left-10 w-32 h-32 bg-white/10 rounded-full blur-xl animate-pulse"></div>
-          <div className="absolute bottom-10 right-10 w-48 h-48 bg-white/10 rounded-full blur-xl animate-pulse delay-1000"></div>
-          
-          <div className="relative p-16 text-center text-white">
-            <h2 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
-              Ready to Join Our <span className="text-yellow-300">Revolution?&apos;</span>
+
+          <div className="relative p-12 text-center text-white">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              Interested in {data.name}?
             </h2>
-            <p className="text-xl md:text-2xl mb-12 text-white/90 max-w-3xl mx-auto leading-relaxed">
-              Be part of something extraordinary. Connect with us and help shape the future of innovation.
+            <p className="text-lg mb-8 text-white/90 max-w-2xl mx-auto">
+              Follow for updates or explore our platform to learn more
             </p>
-            
-            <div className="flex flex-col sm:flex-row gap-6 justify-center mb-8">
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <a
                 href={data.website_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group px-12 py-5 bg-white text-purple-700 font-bold rounded-full hover:bg-gray-100 transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-3 text-lg shadow-2xl"
+                className="px-6 py-3 bg-white text-purple-700 font-semibold rounded-lg hover:bg-gray-100 transition-all flex items-center gap-2"
               >
-                Explore Platform
-                <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                Visit Website
+                <ArrowRight className="w-5 h-5" />
               </a>
-              {data.account_details && (
-                <a
-                  href={data.account_details}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-12 py-5 bg-white/15 backdrop-blur-sm hover:bg-white/25 text-white font-bold rounded-full border-2 border-white/30 hover:border-white/50 transition-all duration-300 flex items-center justify-center gap-3 text-lg"
-                >
-                  <Heart className="w-6 h-6" />
-                  Invest & Support
-                </a>
-              )}
-            </div>
-            
-            {/* Action buttons with enhanced styling */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <FollowButton slug={data.slug} />
-              <EditButton founderId={data.founder_id} slug={data.slug}/>
-            </div>
-            
-            {/* Social proof or metrics could go here */}
-            <div className="mt-12 pt-8 border-t border-white/20">
-              <p className="text-white/70 text-sm">
-                Join thousands of innovators and investors who believe in the future
-              </p>
             </div>
           </div>
         </section>
 
-        {/* Additional Professional Features */}
-        
-        {/* Company Metrics Dashboard */}
+        {/* Discussion Section */}
         <section className="bg-white rounded-3xl shadow-2xl border border-gray-100 p-12">
-          <h3 className="text-3xl font-bold text-center mb-12 bg-gradient-to-r from-pink-700 to-amber-700 bg-clip-text text-transparent">
-            Company At A Glance
-          </h3>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <div className="text-center p-6 bg-gradient-to-br from-pink-50 to-amber-50 rounded-2xl">
-              <div className="w-16 h-16 bg-gradient-to-r from-pink-500 to-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Rocket className="w-8 h-8 text-white" />
-              </div>
-              <div className="text-2xl font-bold text-gray-800 mb-2">Founded</div>
-              <div className="text-gray-600">2024</div>
-            </div>
-            
-            <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl">
-              <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Users className="w-8 h-8 text-white" />
-              </div>
-              <div className="text-2xl font-bold text-gray-800 mb-2">Team Size</div>
-              <div className="text-gray-600">Growing</div>
-            </div>
-            
-            <div className="text-center p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl">
-              <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <TrendingUp className="w-8 h-8 text-white" />
-              </div>
-              <div className="text-2xl font-bold text-gray-800 mb-2">Stage</div>
-              <div className="text-gray-600">{data.funding_stage as string}</div>
-            </div>
-            
-            <div className="text-center p-6 bg-gradient-to-br from-purple-50 to-violet-50 rounded-2xl">
-              <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-violet-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Globe className="w-8 h-8 text-white" />
-              </div>
-              <div className="text-2xl font-bold text-gray-800 mb-2">Market</div>
-              <div className="text-gray-600">Global</div>
-            </div>
-          </div>
+          <Discussion startupId={data.id} />
         </section>
 
-        {/* Contact & Connect Section */}
-        <section className="grid lg:grid-cols-2 gap-12">
-          {/* Connect Card */}
-          <div className="bg-gradient-to-br from-pink-500 to-amber-500 rounded-3xl p-12 text-white relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-xl"></div>
-            <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
-            
-            <div className="relative z-10">
-            <h3 className="text-3xl font-bold mb-6">Let&apos;s Connect</h3>
-              <p className="text-white/90 mb-8 text-lg leading-relaxed">
-                Ready to discuss partnerships, investments, or just want to learn more about our journey?&apos;
-              </p>
-              
-              <div className="space-y-4">
-                <a href={`mailto:contact@${data.name.toLowerCase().replace(/\s+/g, '')}.com`} 
-                   className="flex items-center gap-3 text-white/90 hover:text-white transition-colors">
-                  <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                    <span className="text-lg">📧</span>
-                  </div>
-                  Get in Touch
-                </a>
-                
-                <a href={data.website_url}
-                   target="_blank"
-                   rel="noopener noreferrer" 
-                   className="flex items-center gap-3 text-white/90 hover:text-white transition-colors">
-                  <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                    <ExternalLink className="w-5 h-5" />
-                  </div>
-                  Visit Website
-                </a>
-              </div>
-            </div>
-          </div>
 
-          {/* Newsletter Signup */}
-          <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 p-12">
-            <h3 className="text-3xl font-bold mb-6 bg-gradient-to-r from-pink-700 to-amber-700 bg-clip-text text-transparent">
-              Stay Updated
-            </h3>
-            <p className="text-gray-600 mb-8 text-lg leading-relaxed">
-              Get the latest updates on our progress, milestones, and opportunities to get involved.
-            </p>
-            
-            <div className="space-y-4">
-              <input 
-                type="email"
-                placeholder="Enter your email address"
-                className="w-full px-6 py-4 border border-gray-200 rounded-2xl focus:outline-none focus:border-pink-500 focus:ring-4 focus:ring-pink-500/20 transition-all text-lg"
-              />
-              <button className="w-full px-8 py-4 bg-gradient-to-r from-pink-600 to-amber-600 hover:from-pink-700 hover:to-amber-700 text-white font-bold rounded-2xl transition-all duration-300 transform hover:scale-105 shadow-lg text-lg">
-                Subscribe to Updates
-              </button>
-            </div>
-            
-            <p className="text-gray-500 text-sm mt-4">
-              We respect your privacy. Unsubscribe at any time.
-            </p>
-          </div>
-        </section>
       </div>
     </div>
   );

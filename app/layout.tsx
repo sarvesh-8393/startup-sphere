@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import SessionWrapper from "@/components/SessionWrapper";
 import SessionSync from "@/components/SessionSync";
+import Navbar from "@/components/Navbar";
 import { Toaster } from "react-hot-toast";
 
 const geistSans = Geist({
@@ -19,7 +20,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
-         <SessionWrapper><SessionSync/>{children}<Toaster position="top-right" /></SessionWrapper>
+         <SessionWrapper>
+           <SessionSync/>
+           <Navbar />
+           <div className="min-h-screen bg-gradient-to-br from-pink-50 to-amber-50">
+             {children}
+           </div>
+           <Toaster position="top-right" />
+         </SessionWrapper>
       </body>
     </html>
   );

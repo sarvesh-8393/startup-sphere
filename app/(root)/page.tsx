@@ -29,6 +29,30 @@ export default async function Page({ searchParams }: Props) {
   }
   const userEmail = session.user.email;
 
+  // 2) Check if user has preferences
+  const { supabase } = await import("@/lib/supabaseClient");
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("email", userEmail)
+    .single();
+
+  if (profile) {
+    const { data: preferences } = await supabase
+      .from("user_preferences")
+      .select("id")
+      .eq("profile_id", profile.id)
+      .single();
+
+    if (!preferences) {
+      // No preferences, redirect to onboarding
+      redirect("/onboarding");
+    }
+  } else {
+    // No profile, redirect to onboarding
+    redirect("/onboarding");
+  }
+
   const params = new URLSearchParams();
   params.set('email', userEmail);
   if (query) params.set('query', query);
@@ -59,7 +83,6 @@ export default async function Page({ searchParams }: Props) {
   // 6) render page
   return (
     <div className="w-full min-h-full">
-      <Navbar />
       <HeroSection />
       <AllStartup query={query} />
       <StartupCard startups={startups ?? []} />

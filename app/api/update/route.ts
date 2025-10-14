@@ -40,6 +40,7 @@ export async function PUT(req: Request) {
     const milestones = formData.get('milestones') as string;
     const team_profiles = formData.get('team_profiles') as string;
     const awards = formData.get('awards') as string;
+    const follower_message = formData.get('follower_message') as string;
 
     // Parse tags into an array (assuming comma-separated string from form)
     const tags = tagsString ? tagsString.split(',').map(tag => tag.trim()) : [];
@@ -104,8 +105,8 @@ export async function PUT(req: Request) {
 
 
 
-    if (changes.length === 0) {
-      console.log('No changes detected; returning early.');
+    if (changes.length === 0 && !follower_message) {
+      console.log('No changes detected and no custom message; returning early.');
       return NextResponse.json({ message: 'No changes made' }, { status: 200 });
     }
 
@@ -161,35 +162,38 @@ export async function PUT(req: Request) {
     console.log(`Found ${emails.length} follower(s) to notify.`);
 
     // Step 5: Send emails
-   for (const email of emails) {
-  try {
-    console.log(`Sending notification email to ${email}`);
-    const changesHtml = `
-      <div style="font-family: Arial, sans-serif; color: #333; padding: 20px;">
-        <h2 style="color: #e91e63;">🚀 A Startup You Follow Was Updated!</h2>
-        <p style="font-size: 16px;">Hey there 👋,</p>
-        <p style="font-size: 16px;">
-          One of the startups you follow just got updated. Here are the changes:
-        </p>
-        <ul style="padding-left: 20px; font-size: 15px;">
-          ${changes.map(change => `
-            <li style="margin-bottom: 8px; background-color: #fff3cd; padding: 8px 12px; border-left: 4px solid #ffeb3b; border-radius: 4px;">
-              <span style="color: #d81b60;">${change}</span>
-            </li>
-          `).join('')}
-        </ul>
-        <p style="font-size: 14px; color: #777;">You’re receiving this email because you follow this startup on Startup Finder.</p>
-      </div>
-    `;
+    if (emails.length > 0) {
+      for (const email of emails) {
+        try {
+          console.log(`Sending notification email to ${email}`);
+          const customMessage = follower_message ? `<p style="font-size: 16px; font-weight: bold;">${follower_message}</p>` : '';
+          const changesHtml = `
+            <div style="font-family: Arial, sans-serif; color: #333; padding: 20px;">
+              <h2 style="color: #e91e63;">🚀 A Startup You Follow Was Updated!</h2>
+              <p style="font-size: 16px;">Hey there 👋,</p>
+              <p style="font-size: 16px;">
+                One of the startups you follow just got updated. Here are the changes:
+              </p>
+              ${customMessage}
+              <ul style="padding-left: 20px; font-size: 15px;">
+                ${changes.map(change => `
+                  <li style="margin-bottom: 8px; background-color: #fff3cd; padding: 8px 12px; border-left: 4px solid #ffeb3b; border-radius: 4px;">
+                    <span style="color: #d81b60;">${change}</span>
+                  </li>
+                `).join('')}
+              </ul>
+              <p style="font-size: 14px; color: #777;">You’re receiving this email because you follow this startup on Startup Finder.</p>
+            </div>
+          `;
 
-    
-    await sendEmail(email, changesHtml);
+          await sendEmail(email, changesHtml);
 
-    console.log(`Email sent to ${email}`);
-  } catch (e) {
-    console.error(`Failed to send email to ${email}:`, e);
-  }
-}
+          console.log(`Email sent to ${email}`);
+        } catch (e) {
+          console.error(`Failed to send email to ${email}:`, e);
+        }
+      }
+    }
 
 
     return NextResponse.json({ message: 'Startup updated and followers notified.' });
@@ -212,6 +216,6 @@ async function sendEmail(to: string, changesHtml: string) {
     from: '"Startup Finder" <pritam63633@gmail.com>',
     to,
     subject: 'A startup you follow was updated!',
-    html: `<p>Hey! One of the startups you follow just got updated:</p><p>${changesHtml}</p>`,
+    html: changesHtml,
   });
 }

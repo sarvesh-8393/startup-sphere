@@ -3,7 +3,7 @@ import { supabase } from "@/lib/supabaseClient";
 
 export async function POST(req: Request) {
   try {
-    const { email, tags, size, location } = await req.json();
+    const { email, tags, stage, location } = await req.json();
 
     if (!email) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
@@ -21,16 +21,16 @@ export async function POST(req: Request) {
     }
 
     // 2. Insert preferences with profile_id
+    const insertData: Record<string, string | string[] | undefined> = {
+      profile_id: profile.id,
+      tags,
+    };
+    if (stage) insertData.stage = stage;
+    if (location) insertData.location = location;
+
     const { data, error } = await supabase
       .from("user_preferences")
-      .insert([
-        {
-          profile_id: profile.id, // 👈 correct UUID
-          tags,
-          stage: size,
-          location,
-        },
-      ]);
+      .insert([insertData]);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });

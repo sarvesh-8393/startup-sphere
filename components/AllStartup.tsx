@@ -60,9 +60,9 @@ const AllStartup: React.FC<Props> = ({ query }) => {
   };
 
   return (
-    <div className="w-full px-6 py-5">
+    <div className="w-full px-4 sm:px-6 py-5 pb-8">
   <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-    <div className="text-3xl font-bold text-pink-600 mb-3 lg:mb-0">
+    <div className="text-2xl sm:text-3xl font-bold text-pink-600 mb-3 lg:mb-0">
       {query ? `Search results for "${query}"` : 'All Startups'}
     </div>
     <div className="flex flex-wrap gap-3">

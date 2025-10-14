@@ -9,16 +9,16 @@ const Navbar = () => {
   const { data: session } = useSession();
 
   return (
-    <nav className="w-full bg-pink-700 text-black px-4 py-4 flex justify-between items-center shadow-md">
+    <nav className="fixed top-0 left-0 right-0 z-50 w-full bg-pink-700 text-black px-2 sm:px-4 py-2 sm:py-4 flex justify-between items-center shadow-md">
       {/* Logo */}
       <div className="flex items-center gap-2">
         <Link href="/">
-          <Image src="/yc-logo.png" alt="YC Directory" width={120} height={100} />
+          <span className="text-amber-400 font-bold text-xl">StartupSphere</span>
         </Link>
       </div>
 
       {/* Nav Links */}
-      <ul className="flex gap-6 text-md font-medium items-center">
+      <ul className="flex gap-2 sm:gap-6 text-sm sm:text-md font-medium items-center">
         <li><Link href="/create" className="hover:underline">Create</Link></li>
         <li><Link href="/dashboard" className="hover:underline">Dashboard</Link></li>
         <li><Link href="/startups" className="hover:underline">About</Link></li>
@@ -57,6 +57,19 @@ const Navbar = () => {
                 <p className="text-center text-sm text-gray-500">{session?.user?.email}</p>
               </div>
               <hr className="my-1" />
+              <Menu.Item>
+                {({ active }) => (
+                  <Link href="/founder-details">
+                    <button
+                      className={`w-full text-left px-4 py-2 text-sm ${
+                        active ? 'bg-blue-100 text-blue-700' : 'text-gray-700'
+                      }`}
+                    >
+                      Edit
+                    </button>
+                  </Link>
+                )}
+              </Menu.Item>
               <Menu.Item>
                 {({ active }) => (
                   <button
