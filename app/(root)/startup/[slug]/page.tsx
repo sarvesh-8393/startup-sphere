@@ -127,7 +127,7 @@ export default async function StartupPage({
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/60 to-black/80" />
         </div>
 
-        <HeroButtons slug={p.slug} founderId={data.founder_id} currentUserId={currentUserId} initialLikes={data.likes} />
+        <HeroButtons slug={p.slug} founderId={data.founder_id} currentUserId={currentUserId ?? null} initialLikes={data.likes} />
 
         <div className="relative z-10 min-h-screen px-6 md:px-16 py-20 flex flex-col items-center justify-center text-center text-white">
           <div className="animate-fade-in-up max-w-6xl mx-auto">
