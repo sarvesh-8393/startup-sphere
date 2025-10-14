@@ -6,6 +6,12 @@ import { toast } from 'react-hot-toast';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 
+function SearchParamsWrapper({ children }: { children: (edit: string | null) => React.ReactNode }) {
+  const searchParams = useSearchParams();
+  const edit = searchParams.get('edit');
+  return <>{children(edit)}</>;
+}
+
 const INDUSTRY_TAGS = [
   'ai', 'saas', 'fintech', 'healthtech', 'e-commerce',
   'web3', 'edtech', 'marketing', 'analytics', 'productivity',
@@ -39,7 +45,7 @@ type FormDataType = {
   follower_message: string; // Added for message to followers
 };
 
-export default function AddStartupPage() {
+function AddStartupPageContent({ edit }: { edit: string | null }) {
   const [formData, setFormData] = useState<FormDataType>({
     name: '',
     slug: '', // Initialize slug
@@ -73,7 +79,6 @@ export default function AddStartupPage() {
 
   const tagsDropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   // Auto-resize function
   const autoResize = (textarea: HTMLTextAreaElement) => {
@@ -141,12 +146,11 @@ export default function AddStartupPage() {
 
   // Check if we're in edit mode and load existing data
   useEffect(() => {
-    const editId = searchParams.get('edit');
-    if (editId) {
+    if (edit) {
       setIsEditing(true);
-      loadStartupData(editId);
+      loadStartupData(edit);
     }
-  }, [searchParams, loadStartupData]);
+  }, [edit, loadStartupData]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -166,7 +170,7 @@ export default function AddStartupPage() {
 
     setFormData(prev => {
       const updated = { ...prev, [name]: value };
-   
+
       return updated;
     });
 
@@ -228,7 +232,7 @@ export default function AddStartupPage() {
         if(isEditing){
           router.push(`/startup/${formData.slug}`);
         }
-        
+
       } else {
         const errorData = await res.json();
         toast.error(errorData.message || `Failed to ${isEditing ? 'update' : 'add'} startup`);
@@ -298,8 +302,8 @@ export default function AddStartupPage() {
               {isEditing ? 'Edit Your Startup' : 'Showcase Your Startup'}
             </h1>
             <p className='mt-3 text-lg text-gray-600'>
-              {isEditing 
-                ? 'Update your startup information and story' 
+              {isEditing
+                ? 'Update your startup information and story'
                 : 'Tell your complete story and build emotional connection with your audience.'}
             </p>
           </div>
@@ -309,7 +313,7 @@ export default function AddStartupPage() {
             {/* Section 1: Basic Info */}
             <div className='p-6 border-l-4 border-pink-400 bg-gradient-to-r from-pink-50/50 to-amber-50/30 rounded-r-lg space-y-6'>
               <h2 className='text-xl font-semibold text-pink-900 mb-4'>Basic Information</h2>
-              
+
               <div>
                 <label htmlFor='name' className='block text-sm font-medium text-pink-950 mb-1'>Startup Name</label>
                 <input type='text' id='name' name='name' value={formData.name} onChange={handleChange}
@@ -340,16 +344,16 @@ export default function AddStartupPage() {
             {/* Section 2: Mission & Problem */}
             <div className='p-6 border-l-4 border-amber-400 bg-gradient-to-r from-amber-50/30 to-pink-50/30 rounded-r-lg space-y-6'>
               <h2 className='text-xl font-semibold text-amber-900 mb-4'>Why We Exist & What We Solve</h2>
-              
+
               <div>
                 <label htmlFor='mission_statement' className='block text-sm font-medium text-amber-950 mb-1'>
                   <Lightbulb className='inline h-4 w-4 mr-1' />
                   Mission Statement - Why We Exist
                 </label>
-                <textarea 
-                  id='mission_statement' 
-                  name='mission_statement' 
-                  value={formData.mission_statement} 
+                <textarea
+                  id='mission_statement'
+                  name='mission_statement'
+                  value={formData.mission_statement}
                   onChange={handleChange}
                   className='w-full px-4 py-3 bg-white border border-amber-300/80 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/30 transition-all resize-none overflow-hidden min-h-[80px]'
                   rows={1}
@@ -359,10 +363,10 @@ export default function AddStartupPage() {
 
               <div>
                 <label htmlFor='problem_solution' className='block text-sm font-medium text-amber-950 mb-1'>The Problem We&apos;re Solving & Our Solution</label>
-                <textarea 
-                  id='problem_solution' 
-                  name='problem_solution' 
-                  value={formData.problem_solution} 
+                <textarea
+                  id='problem_solution'
+                  name='problem_solution'
+                  value={formData.problem_solution}
                   onChange={handleChange}
                   className='w-full px-4 py-3 bg-white border border-amber-300/80 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/30 transition-all resize-none overflow-hidden min-h-[100px]'
                   rows={1}
@@ -374,13 +378,13 @@ export default function AddStartupPage() {
             {/* Section 3: Story & Market */}
             <div className='p-6 border-l-4 border-pink-500 bg-gradient-to-r from-pink-50/40 to-amber-50/40 rounded-r-lg space-y-6'>
               <h2 className='text-xl font-semibold text-pink-900 mb-4'>Our Story & Who We Serve</h2>
-              
+
               <div>
                 <label htmlFor='founder_story' className='block text-sm font-medium text-pink-950 mb-1'>Our Origin Story</label>
-                <textarea 
-                  id='founder_story' 
-                  name='founder_story' 
-                  value={formData.founder_story} 
+                <textarea
+                  id='founder_story'
+                  name='founder_story'
+                  value={formData.founder_story}
                   onChange={handleChange}
                   className='w-full px-4 py-3 bg-white border border-pink-300/80 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:border-pink-500 focus:ring-4 focus:ring-pink-500/30 transition-all resize-none overflow-hidden min-h-[100px]'
                   rows={1}
@@ -393,10 +397,10 @@ export default function AddStartupPage() {
                   <Target className='inline h-4 w-4 mr-1' />
                   Who Needs This Most
                 </label>
-                <textarea 
-                  id='target_market' 
-                  name='target_market' 
-                  value={formData.target_market} 
+                <textarea
+                  id='target_market'
+                  name='target_market'
+                  value={formData.target_market}
                   onChange={handleChange}
                   className='w-full px-4 py-3 bg-white border border-pink-300/80 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:border-pink-500 focus:ring-4 focus:ring-pink-500/30 transition-all resize-none overflow-hidden min-h-[80px]'
                   rows={1}
@@ -408,16 +412,16 @@ export default function AddStartupPage() {
             {/* Section 4: Traction & Proof */}
             <div className='p-6 border-l-4 border-amber-500 bg-gradient-to-r from-amber-50/40 to-pink-50/30 rounded-r-lg space-y-6'>
               <h2 className='text-xl font-semibold text-amber-900 mb-4'>Proof We&apos;re Not Just Talk</h2>
-              
+
               <div>
                 <label htmlFor='traction' className='block text-sm font-medium text-amber-950 mb-1'>
                   <Trophy className='inline h-4 w-4 mr-1' />
                   Current Traction & Growth
                 </label>
-                <textarea 
-                  id='traction' 
-                  name='traction' 
-                  value={formData.traction} 
+                <textarea
+                  id='traction'
+                  name='traction'
+                  value={formData.traction}
                   onChange={handleChange}
                   className='w-full px-4 py-3 bg-white border border-amber-300/80 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/30 transition-all resize-none overflow-hidden min-h-[80px]'
                   rows={1}
@@ -427,10 +431,10 @@ export default function AddStartupPage() {
 
               <div>
                 <label htmlFor='milestones' className='block text-sm font-medium text-amber-950 mb-1'>What We&apos;ve Achieved & What&apos;s Next</label>
-                <textarea 
-                  id='milestones' 
-                  name='milestones' 
-                  value={formData.milestones} 
+                <textarea
+                  id='milestones'
+                  name='milestones'
+                  value={formData.milestones}
                   onChange={handleChange}
                   className='w-full px-4 py-3 bg-white border border-amber-300/80 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/30 transition-all resize-none overflow-hidden min-h-[100px]'
                   rows={1}
@@ -440,10 +444,10 @@ export default function AddStartupPage() {
 
               <div>
                 <label htmlFor='awards' className='block text-sm font-medium text-amber-950 mb-1'>Awards & Recognition</label>
-                <textarea 
-                  id='awards' 
-                  name='awards' 
-                  value={formData.awards} 
+                <textarea
+                  id='awards'
+                  name='awards'
+                  value={formData.awards}
                   onChange={handleChange}
                   className='w-full px-4 py-3 bg-white border border-amber-300/80 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/30 transition-all resize-none overflow-hidden min-h-[80px]'
                   rows={1}
@@ -455,16 +459,16 @@ export default function AddStartupPage() {
             {/* Section 5: Team & Funding */}
             <div className='p-6 border-l-4 border-pink-600 bg-gradient-to-r from-pink-50/50 to-amber-50/50 rounded-r-lg space-y-6'>
               <h2 className='text-xl font-semibold text-pink-900 mb-4'>Team & Investment</h2>
-              
+
               <div>
                 <label htmlFor='team_profiles' className='block text-sm font-medium text-pink-950 mb-1'>
                   <Users className='inline h-4 w-4 mr-1' />
                   Meet the Team
                 </label>
-                <textarea 
-                  id='team_profiles' 
-                  name='team_profiles' 
-                  value={formData.team_profiles} 
+                <textarea
+                  id='team_profiles'
+                  name='team_profiles'
+                  value={formData.team_profiles}
                   onChange={handleChange}
                   className='w-full px-4 py-3 bg-white border border-pink-300/80 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:border-pink-500 focus:ring-4 focus:ring-pink-500/30 transition-all resize-none overflow-hidden min-h-[100px]'
                   rows={1}
@@ -474,10 +478,10 @@ export default function AddStartupPage() {
 
               <div>
                 <label htmlFor='use_of_funds' className='block text-sm font-medium text-pink-950 mb-1'>How We&apos;ll Use the Investment</label>
-                <textarea 
-                  id='use_of_funds' 
-                  name='use_of_funds' 
-                  value={formData.use_of_funds} 
+                <textarea
+                  id='use_of_funds'
+                  name='use_of_funds'
+                  value={formData.use_of_funds}
                   onChange={handleChange}
                   className='w-full px-4 py-3 bg-white border border-pink-300/80 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:border-pink-500 focus:ring-4 focus:ring-pink-500/30 transition-all resize-none overflow-hidden min-h-[80px]'
                   rows={1}
@@ -622,16 +626,16 @@ export default function AddStartupPage() {
 
             {/* Buttons */}
             <div className='pt-8 flex justify-end gap-4'>
-              <button 
-                type='button' 
+              <button
+                type='button'
                 onClick={handleCancel}
                 disabled={isLoading}
                 className='px-8 py-3 rounded-lg text-sm font-semibold text-gray-800 bg-gray-200 hover:bg-gray-300 transition-colors disabled:opacity-50'
               >
                 Cancel
               </button>
-              <button 
-                type='submit' 
+              <button
+                type='submit'
                 disabled={isLoading}
                 className='px-8 py-3 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-pink-600 to-amber-600 hover:from-pink-700 hover:to-amber-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed'
               >
@@ -642,5 +646,15 @@ export default function AddStartupPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function AddStartupPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SearchParamsWrapper>
+        {(edit) => <AddStartupPageContent edit={edit} />}
+      </SearchParamsWrapper>
+    </Suspense>
   );
 }

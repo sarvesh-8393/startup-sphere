@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, Suspense } from 'react';
-import { LinkIcon, Briefcase, ChevronDown, Wallet, Target, Trophy, Users, Lightbulb, User, MapPin, Award, Globe } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ChevronDown, User, MapPin, Award, Globe } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useSession } from 'next-auth/react';
 
@@ -11,14 +11,6 @@ const INDUSTRY_TAGS = [
   'ai', 'saas', 'fintech', 'healthtech', 'e-commerce',
   'web3', 'edtech', 'marketing', 'analytics', 'productivity',
   'developer tools', 'sustainability'
-];
-
-const STAGE_TAGS = [
-  'yc alumni', 'bootstrapped', 'series a', 'series b', 'pre-seed', 'seed'
-];
-
-const INTEREST_TAGS = [
-  'networking', 'mentorship', 'investing', 'startup inspiration', 'industry trends'
 ];
 
 type FormDataType = {
@@ -86,7 +78,6 @@ export default function FounderDetailsPage() {
 
   const tagsDropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { data: session } = useSession();
 
   // Auto-resize function
