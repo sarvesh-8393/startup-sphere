@@ -52,7 +52,9 @@ const Navbar = () => {
       <ul className="flex gap-2 sm:gap-6 text-sm sm:text-md font-medium items-center">
         <li><Link href="/create" className="hover:underline">Create</Link></li>
         {/* <li><Link href="/dashboard" className="hover:underline">Dashboard</Link></li> */}
+
         <li><Link href="/about" className="hover:underline">About</Link></li>
+
 
         {/* Avatar + Dropdown */}
         <li>
