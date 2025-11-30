@@ -28,15 +28,58 @@ export default async function Page({ searchParams }: Props) {
     redirect("/login");
   }
   const userEmail = session.user.email;
+  const userName = session.user.name || "";
+  const userImage = session.user.image || "";
 
-  // 2) Check if user has preferences
+  // 2) Sync user to profiles table
   const { supabase } = await import("@/lib/supabaseClient");
-  const { data: profile } = await supabase
+ // fetch user profile
+const { data: profileData, error: profileErr } = await supabase
+  .from("profiles")
+  .select("id, avatar_url")
+  .eq("email", userEmail)
+  .maybeSingle();
+
+let profile = profileData;
+
+if (profileErr) {
+  console.error("Error fetching profile:", profileErr);
+}
+
+// If no profile exists, insert
+if (!profile) {
+  const { data: newProfile, error: insertErr } = await supabase
     .from("profiles")
-    .select("id")
-    .eq("email", userEmail)
+    .insert([
+      {
+        email: userEmail,
+        full_name: userName,
+        avatar_url: userImage,
+      },
+    ])
+    .select("id, avatar_url")
     .single();
 
+  if (insertErr) {
+    console.error("Error inserting profile:", insertErr);
+  } else {
+    profile = newProfile;
+  }
+} else {
+  // Update avatar_url if different
+  if (profile.avatar_url !== userImage) {
+    const { error: updateErr } = await supabase
+      .from("profiles")
+      .update({ avatar_url: userImage })
+      .eq("id", profile.id);
+
+    if (updateErr) {
+      console.error("Error updating avatar:", updateErr);
+    }
+  }
+}
+
+  // 3) Check if user has preferences
   if (profile) {
     const { data: preferences } = await supabase
       .from("user_preferences")

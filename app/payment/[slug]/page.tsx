@@ -122,9 +122,9 @@ export default async function PaymentPage({
 
               {/* Amount Selection */}
               <div className="mb-6">
-                <label className="block text-sm font-semibold text-gray-700 mb-3">Select Amount</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-3">Select Amount (INR)</label>
                 <div className="grid grid-cols-2 gap-3">
-                  {['$25', '$50', '$100', '$250'].map((amount) => (
+                  {['₹500', '₹1000', '₹2000', '₹5000'].map((amount) => (
                     <button
                       key={amount}
                       className="px-4 py-3 border-2 border-gray-200 hover:border-pink-300 hover:bg-pink-50 text-gray-700 font-semibold rounded-xl transition-all duration-200"
@@ -136,7 +136,7 @@ export default async function PaymentPage({
                 <div className="mt-3">
                   <input
                     type="number"
-                    placeholder="Custom amount"
+                    placeholder="Enter custom amount in ₹"
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
                   />
                 </div>
@@ -146,15 +146,28 @@ export default async function PaymentPage({
               <div className="mb-6">
                 <label className="block text-sm font-semibold text-gray-700 mb-3">Payment Method</label>
                 <div className="space-y-3">
+                  {/* Razorpay Integration Hint: Replace these static options with Razorpay payment methods */}
+                  {/* You'll need to load Razorpay SDK and use their checkout.js */}
                   <div className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl hover:border-pink-300 cursor-pointer transition-colors">
                     <CreditCard className="w-6 h-6 text-gray-600" />
-                    <span className="font-medium text-gray-700">Credit/Debit Card</span>
+                    <span className="font-medium text-gray-700">Credit/Debit Card (via Razorpay)</span>
                   </div>
                   <div className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl hover:border-pink-300 cursor-pointer transition-colors">
                     <Shield className="w-6 h-6 text-gray-600" />
-                    <span className="font-medium text-gray-700">PayPal</span>
+                    <span className="font-medium text-gray-700">UPI/Net Banking (via Razorpay)</span>
+                  </div>
+                  <div className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl hover:border-pink-300 cursor-pointer transition-colors">
+                    <Shield className="w-6 h-6 text-gray-600" />
+                    <span className="font-medium text-gray-700">Wallets (via Razorpay)</span>
                   </div>
                 </div>
+                {/* Razorpay Integration Notes:
+                   1. Install razorpay package: npm install razorpay
+                   2. Load Razorpay checkout script in _app.js or layout
+                   3. Create order on backend API endpoint
+                   4. Use Razorpay checkout with order_id, key, amount, currency
+                   5. Handle payment success/failure callbacks
+                */}
               </div>
 
               {/* Fund Button */}

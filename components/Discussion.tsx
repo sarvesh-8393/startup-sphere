@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import Image from "next/image";
 import { supabase } from "@/lib/supabaseClient";
 import { useSession } from "next-auth/react";
-import { MessageSquare, TrendingUp, Clock, ArrowBigUp, ArrowBigDown, Reply } from "lucide-react";
+import { MessageSquare, TrendingUp, Clock, ArrowBigUp, ArrowBigDown, Reply, Crown } from "lucide-react";
 
 interface Profile {
   full_name?: string;
   avatar_url?: string;
+  email?: string;
 }
 
 interface CommentVote {
@@ -21,8 +23,14 @@ interface CommentData {
   created_at: string;
   user_id: string;
   parent_id: string | null;
-  profiles: Profile[];
   comment_votes: CommentVote[];
+}
+
+interface ProfileData {
+  id: string;
+  full_name?: string;
+  avatar_url?: string;
+  email?: string;
 }
 
 interface Comment {
@@ -39,9 +47,197 @@ interface Comment {
 
 type SortType = "top" | "newest";
 
+interface CommentItemProps {
+  comment: Comment;
+  currentUserId: string | null;
+  founderId: string | null;
+  replyTo: string | null;
+  replyContent: string;
+  setReplyTo: (id: string | null) => void;
+  setReplyContent: (content: string) => void;
+  postComment: (parentId: string | null) => void;
+  vote: (commentId: string, type: 1 | -1) => void;
+  getTimeAgo: (dateString: string) => string;
+  depth?: number;
+}
+
+function CommentItem({
+  comment,
+  currentUserId,
+  founderId,
+  replyTo,
+  replyContent,
+  setReplyTo,
+  setReplyContent,
+  postComment,
+  vote,
+  getTimeAgo,
+  depth = 0
+}: CommentItemProps) {
+  const isTopLevel = depth === 0;
+  const avatarSize = isTopLevel ? "w-8 h-8" : "w-6 h-6";
+  const textSize = isTopLevel ? "text-sm" : "text-xs";
+  const marginLeft = depth > 0 ? `ml-${Math.min(depth * 10, 20)}` : "";
+  const borderColors = ["border-gray-100", "border-blue-200", "border-green-200", "border-yellow-200", "border-red-200"];
+  const borderLeft = depth > 0 ? `border-l-2 ${borderColors[depth % borderColors.length]} pl-3` : "";
+  const isFounder = comment.user_id === founderId;
+
+  return (
+    <div className={`${marginLeft} ${borderLeft} ${depth > 0 ? 'mt-2' : ''}`}>
+      <div className={`bg-white rounded-2xl border ${isFounder ? 'border-yellow-300 bg-gradient-to-r from-yellow-50 to-white' : 'border-gray-200'} p-3 ${isTopLevel ? '' : 'border-gray-100'}`}>
+        {/* Comment Header */}
+        <div className="flex items-start gap-2">
+          <div className="flex-shrink-0 relative">
+            {comment.profiles?.avatar_url ? (
+              <Image
+                src={comment.profiles.avatar_url}
+                alt={comment.profiles.full_name || comment.profiles.email || "User"}
+                width={isTopLevel ? 32 : 24}
+                height={isTopLevel ? 32 : 24}
+                className={`${avatarSize} rounded-full object-cover ${isFounder ? 'ring-2 ring-yellow-400' : ''}`}
+              />
+            ) : (
+              <div className={`${avatarSize} rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white ${isTopLevel ? 'text-sm' : 'text-xs'} font-semibold ${isFounder ? 'ring-2 ring-yellow-400' : ''}`}>
+                {(comment.profiles?.full_name || comment.profiles?.email || 'A')[0]}
+              </div>
+            )}
+            {isFounder && (
+              <div className="absolute -top-1 -right-1 bg-yellow-400 rounded-full p-0.5">
+                <Crown className="w-3 h-3 text-white" fill="currentColor" />
+              </div>
+            )}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className={`flex items-center gap-2 mb-1`}>
+              <span className={`font-semibold ${textSize} text-gray-900`}>
+                {comment.profiles?.full_name || comment.profiles?.email || "Anon"}
+              </span>
+              {isFounder && (
+                <span className="px-1.5 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full border border-yellow-200">
+                  Founder
+                </span>
+              )}
+              <span className="text-gray-400 text-xs">·</span>
+              <span className="text-gray-500 text-xs">
+                {getTimeAgo(comment.created_at)}
+              </span>
+            </div>
+
+            <p className={`text-gray-700 ${textSize} leading-relaxed mb-2`}>
+              {comment.content}
+            </p>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-0.5 bg-gray-50 rounded px-1.5 py-0.5">
+                <button
+                  aria-label="Upvote"
+                  className={`p-0.5 rounded transition-colors ${
+                    comment.user_vote === 1
+                      ? "text-pink-600"
+                      : "text-gray-400 hover:text-pink-600"
+                  }`}
+                  onClick={() => vote(comment.id, 1)}
+                >
+                  <ArrowBigUp className="w-4 h-4" fill={comment.user_vote === 1 ? "currentColor" : "none"} />
+                </button>
+                <span className={`text-xs font-semibold min-w-[1.5rem] text-center ${
+                  comment.votes > 0 ? "text-pink-600" : comment.votes < 0 ? "text-gray-500" : "text-gray-600"
+                }`}>
+                  {comment.votes}
+                </span>
+                <button
+                  aria-label="Downvote"
+                  className={`p-0.5 rounded transition-colors ${
+                    comment.user_vote === -1
+                      ? "text-gray-600"
+                      : "text-gray-400 hover:text-gray-600"
+                  }`}
+                  onClick={() => vote(comment.id, -1)}
+                >
+                  <ArrowBigDown className="w-4 h-4" fill={comment.user_vote === -1 ? "currentColor" : "none"} />
+                </button>
+              </div>
+
+              {currentUserId && (
+                <button
+                  className="flex items-center gap-1 px-2 py-0.5 text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded transition-colors text-xs font-medium"
+                  onClick={() => setReplyTo(replyTo === comment.id ? null : comment.id)}
+                >
+                  <Reply className="w-3 h-3" />
+                  Reply
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Reply Input */}
+        {replyTo === comment.id && currentUserId && (
+          <div className="mt-2 ml-10 bg-gray-50 rounded-xl p-2">
+            <input
+              type="text"
+              className="w-full bg-transparent border-0 focus:outline-none text-gray-900 placeholder-gray-400 text-sm"
+              placeholder="Write a reply..."
+              value={replyContent}
+              onChange={(e) => setReplyContent(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") postComment(comment.id);
+              }}
+              autoFocus
+            />
+            <div className="flex justify-end gap-2 mt-1.5">
+              <button
+                className="px-2 py-1 text-gray-600 hover:bg-gray-200 rounded text-xs font-medium"
+                onClick={() => {
+                  setReplyTo(null);
+                  setReplyContent("");
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-3 py-1 bg-pink-600 text-white rounded hover:bg-pink-700 transition-colors text-xs font-medium disabled:opacity-50"
+                onClick={() => postComment(comment.id)}
+                disabled={!replyContent.trim()}
+              >
+                Reply
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Recursive Replies */}
+        {comment.replies && comment.replies.length > 0 && (
+          <div className="mt-2 space-y-2">
+            {comment.replies.map((reply) => (
+              <CommentItem
+                key={reply.id}
+                comment={reply}
+                currentUserId={currentUserId}
+                founderId={founderId}
+                replyTo={replyTo}
+                replyContent={replyContent}
+                setReplyTo={setReplyTo}
+                setReplyContent={setReplyContent}
+                postComment={postComment}
+                vote={vote}
+                getTimeAgo={getTimeAgo}
+                depth={depth + 1}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Discussion({ startupId }: { startupId: string }) {
   const { data: session, status } = useSession();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [founderId, setFounderId] = useState<string | null>(null);
 
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
@@ -70,6 +266,25 @@ export default function Discussion({ startupId }: { startupId: string }) {
     fetchCurrentUser();
   }, [session]);
 
+  // Fetch founder id
+  useEffect(() => {
+    const fetchFounder = async () => {
+      if (!startupId) return;
+
+      const { data, error } = await supabase
+        .from("startups")
+        .select("founder_id")
+        .eq("id", startupId)
+        .single();
+
+      if (!error && data) {
+        setFounderId(data.founder_id);
+      }
+    };
+
+    fetchFounder();
+  }, [startupId]);
+
   // Fetch comments and votes
   const fetchComments = useCallback(async () => {
     if (!startupId) return;
@@ -82,7 +297,6 @@ export default function Discussion({ startupId }: { startupId: string }) {
         created_at,
         user_id,
         parent_id,
-        profiles(full_name, avatar_url),
         comment_votes(vote_type, user_id)
       `)
       .eq("startup_id", startupId);
@@ -92,8 +306,27 @@ export default function Discussion({ startupId }: { startupId: string }) {
       return;
     }
 
+    // Get unique user IDs
+    const userIds = [...new Set((data as CommentData[]).map(c => c.user_id))];
+
+    // Fetch profiles for these user IDs
+    const { data: profilesData, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id, full_name, avatar_url, email")
+      .in("id", userIds);
+
+    if (profilesError) {
+      console.error("Error fetching profiles:", JSON.stringify(profilesError));
+    }
+
+    const profileMap: Record<string, Profile> = {};
+    if (profilesData) {
+      profilesData.forEach((p: ProfileData) => {
+        profileMap[p.id] = p;
+      });
+    }
+
     const commentMap: Record<string, Comment> = {};
-    const topLevelComments: Comment[] = [];
 
     (data as CommentData[]).forEach((c) => {
       const votes = c.comment_votes.reduce((acc: number, v: CommentVote) => acc + v.vote_type, 0);
@@ -106,28 +339,23 @@ export default function Discussion({ startupId }: { startupId: string }) {
         created_at: c.created_at,
         user_id: c.user_id,
         parent_id: c.parent_id,
-        profiles: c.profiles ? c.profiles[0] : null,
+        profiles: profileMap[c.user_id] || null,
         votes,
         user_vote,
         replies: [],
       };
     });
 
-    Object.values(commentMap).forEach((comment) => {
-      if (comment.parent_id) {
-        const parent = commentMap[comment.parent_id];
-        if (parent) {
-          parent.replies = parent.replies || [];
-          parent.replies.push(comment);
-        }
-      }
-    });
+    // Build the full recursive tree
+    const buildCommentTree = (parentId: string | null): Comment[] => {
+      const children = Object.values(commentMap).filter(comment => comment.parent_id === parentId);
+      return children.map(comment => ({
+        ...comment,
+        replies: buildCommentTree(comment.id),
+      }));
+    };
 
-    Object.values(commentMap).forEach((comment) => {
-      if (!comment.parent_id) {
-        topLevelComments.push(comment);
-      }
-    });
+    const topLevelComments = buildCommentTree(null);
 
     const sortedComments = sortComments(topLevelComments, sortType);
     setComments(sortedComments);
@@ -336,187 +564,19 @@ export default function Discussion({ startupId }: { startupId: string }) {
         )}
 
         {comments.map((comment) => (
-          <div key={comment.id} className="bg-white rounded-2xl border border-gray-200 p-3">
-            {/* Comment Header */}
-            <div className="flex items-start gap-2">
-              <div className="flex-shrink-0">
-                {comment.profiles?.avatar_url ? (
-                  <img
-                    src={comment.profiles.avatar_url}
-                    alt={comment.profiles.full_name || "User"}
-                    className="w-8 h-8 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center text-white text-sm font-semibold">
-                    {comment.profiles?.full_name?.[0] || 'A'}
-                  </div>
-                )}
-              </div>
-              
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-semibold text-sm text-gray-900">
-                    {comment.profiles?.full_name || "Anon"}
-                  </span>
-                  <span className="text-gray-400 text-xs">·</span>
-                  <span className="text-gray-500 text-xs">
-                    {getTimeAgo(comment.created_at)}
-                  </span>
-                </div>
-                
-                <p className="text-gray-700 text-sm leading-relaxed mb-2">
-                  {comment.content}
-                </p>
-
-                {/* Action Buttons */}
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-0.5 bg-gray-50 rounded px-1.5 py-0.5">
-                    <button
-                      aria-label="Upvote"
-                      className={`p-0.5 rounded transition-colors ${
-                        comment.user_vote === 1 
-                          ? "text-pink-600" 
-                          : "text-gray-400 hover:text-pink-600"
-                      }`}
-                      onClick={() => vote(comment.id, 1)}
-                    >
-                      <ArrowBigUp className="w-4 h-4" fill={comment.user_vote === 1 ? "currentColor" : "none"} />
-                    </button>
-                    <span className={`text-xs font-semibold min-w-[1.5rem] text-center ${
-                      comment.votes > 0 ? "text-pink-600" : comment.votes < 0 ? "text-gray-500" : "text-gray-600"
-                    }`}>
-                      {comment.votes}
-                    </span>
-                    <button
-                      aria-label="Downvote"
-                      className={`p-0.5 rounded transition-colors ${
-                        comment.user_vote === -1 
-                          ? "text-gray-600" 
-                          : "text-gray-400 hover:text-gray-600"
-                      }`}
-                      onClick={() => vote(comment.id, -1)}
-                    >
-                      <ArrowBigDown className="w-4 h-4" fill={comment.user_vote === -1 ? "currentColor" : "none"} />
-                    </button>
-                  </div>
-                  
-                  {currentUserId && (
-                    <button
-                      className="flex items-center gap-1 px-2 py-0.5 text-gray-600 hover:text-pink-600 hover:bg-pink-50 rounded transition-colors text-xs font-medium"
-                      onClick={() => setReplyTo(replyTo === comment.id ? null : comment.id)}
-                    >
-                      <Reply className="w-3 h-3" />
-                      Reply
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Reply Input */}
-            {replyTo === comment.id && currentUserId && (
-              <div className="mt-2 ml-10 bg-gray-50 rounded-xl p-2">
-                <input
-                  type="text"
-                  className="w-full bg-transparent border-0 focus:outline-none text-gray-900 placeholder-gray-400 text-sm"
-                  placeholder="Write a reply..."
-                  value={replyContent}
-                  onChange={(e) => setReplyContent(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") postComment(comment.id);
-                  }}
-                  autoFocus
-                />
-                <div className="flex justify-end gap-2 mt-1.5">
-                  <button
-                    className="px-2 py-1 text-gray-600 hover:bg-gray-200 rounded text-xs font-medium"
-                    onClick={() => {
-                      setReplyTo(null);
-                      setReplyContent("");
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="px-3 py-1 bg-pink-600 text-white rounded hover:bg-pink-700 transition-colors text-xs font-medium disabled:opacity-50"
-                    onClick={() => postComment(comment.id)}
-                    disabled={!replyContent.trim()}
-                  >
-                    Reply
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Replies */}
-            {comment.replies && comment.replies.length > 0 && (
-              <div className="mt-2 ml-10 pl-3 border-l-2 border-gray-100 space-y-2">
-                {comment.replies.map((reply) => (
-                  <div key={reply.id} className="flex items-start gap-2">
-                    <div className="flex-shrink-0">
-                      {reply.profiles?.avatar_url ? (
-                        <img
-                          src={reply.profiles.avatar_url}
-                          alt={reply.profiles.full_name || "User"}
-                          className="w-6 h-6 rounded-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-white text-xs font-semibold">
-                          {reply.profiles?.full_name?.[0] || 'A'}
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <span className="font-semibold text-xs text-gray-900">
-                          {reply.profiles?.full_name || "Anon"}
-                        </span>
-                        <span className="text-gray-400 text-xs">·</span>
-                        <span className="text-gray-500 text-xs">
-                          {getTimeAgo(reply.created_at)}
-                        </span>
-                      </div>
-                      
-                      <p className="text-gray-700 text-xs leading-relaxed mb-1">
-                        {reply.content}
-                      </p>
-
-                      <div className="flex items-center gap-0.5 bg-gray-50 rounded px-1 py-0.5 w-fit">
-                        <button
-                          aria-label="Upvote"
-                          className={`p-0.5 rounded transition-colors ${
-                            reply.user_vote === 1 
-                              ? "text-pink-600" 
-                              : "text-gray-400 hover:text-pink-600"
-                          }`}
-                          onClick={() => vote(reply.id, 1)}
-                        >
-                          <ArrowBigUp className="w-3 h-3" fill={reply.user_vote === 1 ? "currentColor" : "none"} />
-                        </button>
-                        <span className={`text-xs font-semibold min-w-[1rem] text-center ${
-                          reply.votes > 0 ? "text-pink-600" : "text-gray-600"
-                        }`}>
-                          {reply.votes}
-                        </span>
-                        <button
-                          aria-label="Downvote"
-                          className={`p-0.5 rounded transition-colors ${
-                            reply.user_vote === -1 
-                              ? "text-gray-600" 
-                              : "text-gray-400 hover:text-gray-600"
-                          }`}
-                          onClick={() => vote(reply.id, -1)}
-                        >
-                          <ArrowBigDown className="w-3 h-3" fill={reply.user_vote === -1 ? "currentColor" : "none"} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <CommentItem
+            key={comment.id}
+            comment={comment}
+            currentUserId={currentUserId}
+            founderId={founderId}
+            replyTo={replyTo}
+            replyContent={replyContent}
+            setReplyTo={setReplyTo}
+            setReplyContent={setReplyContent}
+            postComment={postComment}
+            vote={vote}
+            getTimeAgo={getTimeAgo}
+          />
         ))}
       </div>
     </div>
