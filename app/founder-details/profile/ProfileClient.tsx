@@ -17,7 +17,10 @@ import {
   Target,
   ChevronLeft,
   Mail,
-  Sparkles
+  Sparkles,
+  GraduationCap,
+  Briefcase,
+  Tag
 } from 'lucide-react';
 
 type ProfileData = {
@@ -315,6 +318,88 @@ export default function ProfileClient() {
 
           {/* Right Column */}
           <div className="space-y-8">
+            {/* Education & Expertise */}
+            {(profile.education || (profile.specialties?.length || 0) > 0) && (
+              <div className="bg-white rounded-xl shadow-sm border border-pink-100 p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-100 to-blue-100 flex items-center justify-center mr-2">
+                    <GraduationCap className="w-4 h-4 text-green-600" />
+                  </div>
+                  Education & Expertise
+                </h2>
+                <div className="space-y-4">
+                  {profile.education && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-green-600 uppercase tracking-wider mb-2">Education</h3>
+                      <p className="text-gray-700">{profile.education}</p>
+                    </div>
+                  )}
+                  {profile.specialties?.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-blue-600 uppercase tracking-wider mb-2">Specialties</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {profile.specialties.map((specialty, idx) => (
+                          <span key={idx} className="bg-gradient-to-r from-blue-100 to-green-100 text-blue-800 text-xs font-medium px-3 py-1 rounded-full">
+                            {specialty}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Tags */}
+            {((profile.industry_tags?.length || 0) > 0 || (profile.stage_tags?.length || 0) > 0 || (profile.interest_tags?.length || 0) > 0) && (
+              <div className="bg-white rounded-xl shadow-sm border border-pink-100 p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center mr-2">
+                    <Tag className="w-4 h-4 text-purple-600" />
+                  </div>
+                  Tags
+                </h2>
+                <div className="space-y-4">
+                  {profile.industry_tags?.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-purple-600 uppercase tracking-wider mb-2">Industry</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {profile.industry_tags.map((tag, idx) => (
+                          <span key={idx} className="bg-gradient-to-r from-purple-100 to-pink-100 text-purple-800 text-xs font-medium px-3 py-1 rounded-full">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {profile.stage_tags?.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-pink-600 uppercase tracking-wider mb-2">Stage</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {profile.stage_tags.map((tag, idx) => (
+                          <span key={idx} className="bg-gradient-to-r from-pink-100 to-yellow-100 text-pink-800 text-xs font-medium px-3 py-1 rounded-full">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {profile.interest_tags?.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-yellow-600 uppercase tracking-wider mb-2">Interests</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {profile.interest_tags.map((tag, idx) => (
+                          <span key={idx} className="bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-800 text-xs font-medium px-3 py-1 rounded-full">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Contact & Links */}
             <div className="bg-white rounded-xl shadow-sm border border-pink-100 p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
@@ -325,6 +410,7 @@ export default function ProfileClient() {
               </h2>
               <div className="space-y-3">
                 {profile.email && <ContactLink icon={Mail} label="Email" href={`mailto:${profile.email}`} />}
+                {profile.contact_email && <ContactLink icon={Mail} label="Public Email" href={`mailto:${profile.contact_email}`} />}
                 {profile.linkedin_url && <ContactLink icon={Globe} label="LinkedIn" href={profile.linkedin_url} />}
                 {profile.twitter_url && <ContactLink icon={Globe} label="Twitter" href={profile.twitter_url} />}
                 {profile.github_url && <ContactLink icon={Globe} label="GitHub" href={profile.github_url} />}

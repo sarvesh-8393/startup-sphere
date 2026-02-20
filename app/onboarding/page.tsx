@@ -246,9 +246,7 @@ export default function StartupOnboarding() {
     } else {
       // Last step: show loading wheel and redirect
       setIsLoading(true);
-      setTimeout(() => {
-        savePreferences(answers);
-      }, 1000);
+      savePreferences(answers);
     }
   };
 
@@ -365,7 +363,23 @@ export default function StartupOnboarding() {
           >
             <div className="w-16 h-16 border-4 border-pink-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
           </motion.div>
-        ) : null
+        ) : (
+          <motion.button
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => {
+              setIsLoading(true);
+              savePreferences(answers);
+            }}
+            disabled={isLoading}
+            className="mt-8 px-8 py-4 bg-pink-400 text-white rounded-xl font-semibold shadow-lg text-lg z-10 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Finish
+          </motion.button>
+        )
       ) : (
         <>
           <motion.div
@@ -414,17 +428,46 @@ export default function StartupOnboarding() {
 
           {/* Next Button for Multiple Selections */}
           {isMultiple && (answers[currentStep.id] as string[])?.length > 0 && (
-            <motion.button
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={handleNext}
-              className="mt-8 px-8 py-4 bg-blue-500 text-white rounded-xl font-semibold shadow-lg text-lg z-10"
-            >
-              Next
-            </motion.button>
+            currentStep.id === "looking_for" ? (
+              isLoading ? (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5 }}
+                  className="mt-8 z-10"
+                >
+                  <div className="w-16 h-16 border-4 border-pink-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                </motion.div>
+              ) : (
+                <motion.button
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.3 }}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => {
+                    setIsLoading(true);
+                    savePreferences(answers);
+                  }}
+                  disabled={isLoading}
+                  className="mt-8 px-8 py-4 bg-pink-400 text-white rounded-xl font-semibold shadow-lg text-lg z-10 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Let&apos;s Go
+                </motion.button>
+              )
+            ) : (
+              <motion.button
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.3 }}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={handleNext}
+                className="mt-8 px-8 py-4 bg-blue-500 text-white rounded-xl font-semibold shadow-lg text-lg z-10"
+              >
+                Next
+              </motion.button>
+            )
           )}
         </>
       )}

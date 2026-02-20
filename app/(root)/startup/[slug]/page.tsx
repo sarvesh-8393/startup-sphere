@@ -6,6 +6,7 @@ import { LinkedinIcon, Twitter, Globe, Target, Users, Lightbulb, Rocket, Award, 
 import { HeroButtons } from "./StartupPageClient";
 import ViewTrackerClient from "./ViewTrackerClient";
 import Discussion from "@/components/Discussion";
+import SimilarStartups from "@/components/SimilarStartups";
 import { supabase } from "@/lib/supabaseClient";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
@@ -537,6 +538,9 @@ export default async function StartupPage({
         <section className="bg-white rounded-3xl shadow-2xl border border-gray-100 p-12">
           <Discussion startupId={data.id} />
         </section>
+
+        {/* Similar Startups Section */}
+        <SimilarStartups startupId={data.id} startupName={data.name} />
 
 
       </div>

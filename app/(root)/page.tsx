@@ -5,11 +5,10 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 
-
-import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
 import AllStartup from "@/components/AllStartup";
 import StartupCard, { type Startup } from "@/components/StartupCard";
+import RecommendedStartups from "@/components/RecommendedStartups";
 
 type Props = { searchParams?: Promise<{ query?: string; tags?: string; stage?: string; location?: string; sort?: string }> };
 
@@ -28,15 +27,58 @@ export default async function Page({ searchParams }: Props) {
     redirect("/login");
   }
   const userEmail = session.user.email;
+  const userName = session.user.name || "";
+  const userImage = session.user.image || "";
 
-  // 2) Check if user has preferences
+  // 2) Sync user to profiles table
   const { supabase } = await import("@/lib/supabaseClient");
-  const { data: profile } = await supabase
+  const _profileRes = await supabase
     .from("profiles")
-    .select("id")
+    .select("id, avatar_url")
     .eq("email", userEmail)
-    .single();
+    .maybeSingle();
 
+  let profile = _profileRes.data as any;
+  const profileErr = _profileRes.error;
+
+  if (profileErr) {
+    console.error("Error fetching profile:", profileErr);
+    // Continue anyway
+  }
+
+  if (!profile) {
+    // Insert new profile
+    const { data: newProfile, error: insertErr } = await supabase
+      .from("profiles")
+      .insert([{
+        email: userEmail,
+        full_name: userName,
+        avatar_url: userImage,
+      }])
+      .select("id")
+      .single();
+
+    if (insertErr) {
+      console.error("Error inserting profile:", insertErr);
+      // Continue anyway
+    } else {
+      profile = newProfile;
+    }
+  } else {
+    // Update avatar_url if different
+    if (profile.avatar_url !== userImage) {
+      const { error: updateErr } = await supabase
+        .from("profiles")
+        .update({ avatar_url: userImage })
+        .eq("id", profile.id);
+
+      if (updateErr) {
+        console.error("Error updating avatar_url:", updateErr);
+      }
+    }
+  }
+
+  // 3) Check if user has preferences
   if (profile) {
     const { data: preferences } = await supabase
       .from("user_preferences")
@@ -84,8 +126,7 @@ export default async function Page({ searchParams }: Props) {
   return (
     <div className="w-full min-h-full">
       <HeroSection />
-      <AllStartup query={query} />
-      <StartupCard startups={startups ?? []} />
+      <RecommendedStartups />
     </div>
   );
 }

@@ -1,7 +1,7 @@
-import Navbar from "@/components/Navbar";
 import Image from "next/image";
-import { Heart, CreditCard, Shield, CheckCircle, ArrowLeft } from "lucide-react";
+import { Heart, Shield, CheckCircle, ArrowLeft } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+import RazorpayPaymentForm from "@/components/RazorpayPaymentForm";
 
 interface StartupData {
   id: string;
@@ -110,7 +110,7 @@ export default async function PaymentPage({
           {/* Payment Form */}
           <div className="space-y-6">
             <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
-              <div className="flex items-center gap-3 mb-6">
+              <div className="flex items-center gap-3 mb-8">
                 <div className="w-12 h-12 bg-gradient-to-r from-pink-500 to-amber-500 rounded-xl flex items-center justify-center">
                   <Heart className="w-6 h-6 text-white" />
                 </div>
@@ -120,52 +120,11 @@ export default async function PaymentPage({
                 </div>
               </div>
 
-              {/* Amount Selection */}
-              <div className="mb-6">
-                <label className="block text-sm font-semibold text-gray-700 mb-3">Select Amount</label>
-                <div className="grid grid-cols-2 gap-3">
-                  {['$25', '$50', '$100', '$250'].map((amount) => (
-                    <button
-                      key={amount}
-                      className="px-4 py-3 border-2 border-gray-200 hover:border-pink-300 hover:bg-pink-50 text-gray-700 font-semibold rounded-xl transition-all duration-200"
-                    >
-                      {amount}
-                    </button>
-                  ))}
-                </div>
-                <div className="mt-3">
-                  <input
-                    type="number"
-                    placeholder="Custom amount"
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-
-              {/* Payment Method */}
-              <div className="mb-6">
-                <label className="block text-sm font-semibold text-gray-700 mb-3">Payment Method</label>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl hover:border-pink-300 cursor-pointer transition-colors">
-                    <CreditCard className="w-6 h-6 text-gray-600" />
-                    <span className="font-medium text-gray-700">Credit/Debit Card</span>
-                  </div>
-                  <div className="flex items-center gap-3 p-4 border border-gray-200 rounded-xl hover:border-pink-300 cursor-pointer transition-colors">
-                    <Shield className="w-6 h-6 text-gray-600" />
-                    <span className="font-medium text-gray-700">PayPal</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Fund Button */}
-              <button className="w-full bg-gradient-to-r from-pink-600 to-amber-600 hover:from-pink-700 hover:to-amber-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-3">
-                <Heart className="w-5 h-5" />
-                Fund {data.name}
-              </button>
-
-              <p className="text-xs text-gray-500 text-center mt-4">
-                Your payment is secure and encrypted. By funding, you agree to our terms of service.
-              </p>
+              {/* Razorpay Payment Form */}
+              <RazorpayPaymentForm 
+                startupId={data.id} 
+                startupName={data.name}
+              />
             </div>
 
             {/* Security Notice */}
@@ -174,10 +133,12 @@ export default async function PaymentPage({
                 <Shield className="w-5 h-5 text-green-600" />
                 <div>
                   <h4 className="font-semibold text-green-800">Secure Payment</h4>
-                  <p className="text-sm text-green-700">All transactions are protected by bank-level security</p>
+                  <p className="text-sm text-green-700">All transactions are protected by Razorpay&#39;s bank-level security</p>
                 </div>
               </div>
             </div>
+
+           
           </div>
         </div>
       </div>

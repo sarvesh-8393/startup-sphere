@@ -20,14 +20,24 @@ export interface Startup {
   };
   description: string;
   tags: string[];
+  recommendation_score?: number;
+  recommendation_reasons?: string[];
 }
 
 interface Props {
   startups: Startup[];
+  showMatchScore?: boolean;
 }
 
-const StartupCard: React.FC<Props> = ({ startups }) => {
+const StartupCard: React.FC<Props> = ({ startups, showMatchScore = false }) => {
   const router = useRouter();
+
+  const getMatchScoreColor = (score: number) => {
+    if (score >= 0.8) return 'text-green-600 bg-green-100';
+    if (score >= 0.6) return 'text-blue-600 bg-blue-100';
+    if (score >= 0.4) return 'text-yellow-600 bg-yellow-100';
+    return 'text-orange-600 bg-orange-100';
+  };
 
   return (
     <div className="flex justify-center items-start px-2 sm:px-4 pb-40">
@@ -36,8 +46,15 @@ const StartupCard: React.FC<Props> = ({ startups }) => {
           <li
             key={items.id}
             onClick={() => router.push(`/startup/${items.slug}`)}
-            className="list-none cursor-pointer min-h-[530px] w-full border border-gray-200 bg-amber-50 rounded-xl p-5 flex flex-col items-center shadow-md transition-all duration-300 hover:border-b-4 hover:border-r-4 hover:border-pink-600 hover:bg-pink-100 group"
+            className="list-none cursor-pointer min-h-[530px] w-full border border-gray-200 bg-amber-50 rounded-xl p-5 flex flex-col items-center shadow-md transition-all duration-300 hover:border-b-4 hover:border-r-4 hover:border-pink-600 hover:bg-pink-100 group relative"
           >
+            {/* Match Score Badge (Netflix style) */}
+            {showMatchScore && items.recommendation_score !== undefined && (
+              <div className={`absolute top-4 right-4 px-3 py-1 rounded-full font-bold text-sm ${getMatchScoreColor(items.recommendation_score)}`}>
+                {Math.round(items.recommendation_score * 100)}% match
+              </div>
+            )}
+
             {/* Date and Views */}
             <div className="w-full flex justify-between text-gray-600">
               <p className="text-sm sm:text-lg">
@@ -76,10 +93,10 @@ const StartupCard: React.FC<Props> = ({ startups }) => {
                 </div>
                 <Link
                   href={`/founder-details/profile?id=${items.founder_id}`}
-                   onClick={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
                   className="p-1 text-md hover:underline hover:text-blue-600"
                 >
-                  {items.profiles.full_name}
+                  {items.profiles?.full_name ?? 'Founder'}
                 </Link>
               </div>
 
@@ -87,10 +104,10 @@ const StartupCard: React.FC<Props> = ({ startups }) => {
               <Link
                 href={`/founder-details/profile?id=${items.founder_id}`}
                 className="w-15 h-15 overflow-hidden rounded-full"
-                 onClick={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
               >
                 <Image
-                 src={items.profiles.avatar_url || "/user.png"}
+                  src={items.profiles?.avatar_url || "/user.png"}
                   alt="Founder Image"
                   className="w-full h-full object-cover rounded-full"
                   width={60}
@@ -109,7 +126,7 @@ const StartupCard: React.FC<Props> = ({ startups }) => {
             {/* Tag + Details */}
             <div className="mt-3 w-full flex justify-between items-center">
               <div className="bg-pink-100 text-pink-700 px-3 py-2 rounded-full text-sm font-medium shadow-sm group-hover:bg-amber-100 group-hover:text-amber-700">
-                {items.tags[0]}
+                {items.tags?.[0] ?? 'General'}
               </div>
               <p className="relative group text-sm text-pink-700 font-semibold group-hover:text-amber-600">
                 Details

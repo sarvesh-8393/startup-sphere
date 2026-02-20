@@ -1,8 +1,7 @@
-// app/startup/[slug]/StartupPageClient.tsx
-
 'use client';
 
 import { useState } from 'react';
+import React from 'react';
 import { useSession } from 'next-auth/react';
 import { Bell, Check, Heart } from "lucide-react";
 import EditButton from "@/components/EditButton";
@@ -82,9 +81,41 @@ function FollowButton({ slug }: { slug: string }) {
 }
 
 // Like Button Component
-function LikeButton({ slug, currentLikes, onLike }: { slug: string; currentLikes: number; onLike: (newLikes: number) => void }) {
+function LikeButton({ slug, currentLikes, onLike, onLikeSuccess }: { slug: string; currentLikes: number; onLike: (newLikes: number) => void; onLikeSuccess?: () => void }) {
   const { data: session } = useSession();
   const [isLoading, setIsLoading] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [showNotification, setShowNotification] = useState(false);
+
+  // Check if user has already liked on mount
+  React.useEffect(() => {
+    if (session?.user?.email && !hasLoaded) {
+      const checkLikeStatus = async () => {
+        try {
+          const res = await fetch(`/api/like?slug=${slug}`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+
+          const data = await res.json();
+          if (res.ok) {
+            setIsLiked(data.isLiked);
+          }
+        } catch (error) {
+          console.error('Error checking like status:', error);
+        } finally {
+          setHasLoaded(true);
+        }
+      };
+
+      checkLikeStatus();
+    } else {
+      setHasLoaded(true);
+    }
+  }, [session?.user?.email, slug, hasLoaded]);
 
   const handleLike = async () => {
     if (!session) {
@@ -105,7 +136,16 @@ function LikeButton({ slug, currentLikes, onLike }: { slug: string; currentLikes
       const data = await res.json();
 
       if (res.ok) {
+        const wasLiked = isLiked;
+        setIsLiked(data.isLiked);
         onLike(data.likes);
+        
+        // Show notification only when liking (not unliking)
+        if (!wasLiked && data.isLiked) {
+          setShowNotification(true);
+          onLikeSuccess?.();
+          setTimeout(() => setShowNotification(false), 3000);
+        }
       } else {
         alert(data.error || 'Failed to like startup');
       }
@@ -118,23 +158,52 @@ function LikeButton({ slug, currentLikes, onLike }: { slug: string; currentLikes
   };
 
   return (
-    <button
-      onClick={handleLike}
-      disabled={isLoading}
-      className="group px-4 py-2 bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white font-semibold rounded-full transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2 text-sm shadow-lg"
-    >
-      {isLoading ? (
-        <>
-          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-          Liking...
-        </>
-      ) : (
-        <>
-          <Heart className="w-3 h-3 group-hover:animate-pulse fill-white" />
-          Like ({currentLikes})
-        </>
+    <>
+      <button
+        onClick={handleLike}
+        disabled={isLoading}
+        className={`group px-4 py-2 font-semibold rounded-full transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2 text-sm shadow-lg ${
+          isLiked
+            ? 'bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white'
+            : 'bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white'
+        }`}
+      >
+        {isLoading ? (
+          <>
+            <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            {isLiked ? 'Unliking...' : 'Liking...'}
+          </>
+        ) : (
+          <>
+            <Heart className={`w-4 h-4 transition-all ${
+              isLiked ? 'fill-white' : ''
+            }`} />
+            {isLiked ? 'Liked' : 'Like'} ({currentLikes})
+          </>
+        )}
+      </button>
+
+      {/* Bouncing Notification */}
+      {showNotification && (
+        <div 
+          onClick={() => {
+            const element = document.getElementById('similar-startups');
+            element?.scrollIntoView({ behavior: 'smooth' });
+            setShowNotification(false);
+          }}
+          className="fixed bottom-8 right-8 z-50 cursor-pointer animate-bounce"
+        >
+          <div className="bg-gradient-to-r from-pink-500 to-red-500 text-white px-6 py-4 rounded-full shadow-2xl flex items-center gap-3 hover:scale-105 transition-transform">
+            <div className="text-2xl">✨</div>
+            <div>
+              <div className="font-bold">More startups like this!</div>
+              <div className="text-sm opacity-90">Click to explore</div>
+            </div>
+            <div className="text-xl">→</div>
+          </div>
+        </div>
       )}
-    </button>
+    </>
   );
 }
 
@@ -148,7 +217,14 @@ function HeroButtons({ slug, founderId, currentUserId, initialLikes }: { slug: s
         <EditButton founderId={founderId} slug={slug} />
       </div>
       <div className="absolute top-4 right-4 z-20 flex gap-2">
-        <LikeButton slug={slug} currentLikes={likes} onLike={setLikes} />
+        <LikeButton 
+          slug={slug} 
+          currentLikes={likes} 
+          onLike={setLikes}
+          onLikeSuccess={() => {
+            // Called when user likes (not unlike)
+          }}
+        />
         <FollowButton slug={slug} />
       </div>
     </>

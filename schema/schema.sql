@@ -114,7 +114,21 @@ CREATE TABLE IF NOT EXISTS transactions (
   startup_id UUID REFERENCES startups(id) ON DELETE SET NULL,
   amount NUMERIC NOT NULL,
   message TEXT,
-  timestamp TIMESTAMP DEFAULT now()
+  timestamp TIMESTAMP DEFAULT now(),
+  -- Razorpay integration fields
+  payment_id VARCHAR(255),
+  order_id VARCHAR(255),
+  payment_status VARCHAR(50),
+  payment_method VARCHAR(50)
+);
+
+-- startup_likes (for recommendations engine)
+CREATE TABLE IF NOT EXISTS startup_likes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  startup_id UUID NOT NULL REFERENCES startups(id) ON DELETE CASCADE,
+  created_at TIMESTAMP DEFAULT now(),
+  UNIQUE(user_id, startup_id)
 );
 
 -- user_preferences
