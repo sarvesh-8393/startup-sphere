@@ -5,7 +5,6 @@ import { ChevronDown, User, MapPin, Award, Globe } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
-import { useSession } from 'next-auth/react';
 
 const INDUSTRY_TAGS = [
   'ai', 'saas', 'fintech', 'healthtech', 'e-commerce',
@@ -78,7 +77,6 @@ export default function EditFounderDetailsPage() {
   const tagsDropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { slug } = useParams();
-  const { data: session } = useSession();
 
   // Auto-resize function
   const autoResize = (textarea: HTMLTextAreaElement) => {
@@ -128,7 +126,6 @@ export default function EditFounderDetailsPage() {
             setLogoPreview(profile.avatar_url);
           }
 
-          setIsEditing(true);
           toast.success('Profile data loaded for editing');
         } else {
           toast.error('Profile not found');
@@ -558,7 +555,7 @@ export default function EditFounderDetailsPage() {
               <button
                 type='submit'
                 disabled={isLoading}
-                className='px-8 py-3 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-pink-600 to-amber-600 hover:from-pink-700 hover:to-amber-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed'
+                className='px-8 py-3 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-pink-600 to-amber-600 hover:from-pink-700 hover:to-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed'
               >
                 {isLoading ? 'Updating...' : 'Update Profile'}
               </button>

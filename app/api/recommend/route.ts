@@ -15,7 +15,7 @@ export async function GET(request: Request) {
 
     const session = await getServerSession(authOptions);
 
-    let recommendations: unknown[] = [];
+    let recommendations: Record<string, unknown>[] = [];
 
     if (session?.user?.email) {
       // Logged-in user → personalized recommendations

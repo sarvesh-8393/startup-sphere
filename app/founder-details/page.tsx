@@ -126,7 +126,6 @@ export default function FounderDetailsPage() {
             setLogoPreview(profile.avatar_url || session.user.image || '');
           }
 
-          setIsEditing(true);
           toast.success('Profile data loaded for editing');
         } else {
           // No existing profile, pre-fill with auth data
@@ -564,7 +563,7 @@ export default function FounderDetailsPage() {
               <button
                 type='submit'
                 disabled={isLoading}
-                className='px-8 py-3 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-pink-600 to-amber-600 hover:from-pink-700 hover:to-amber-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed'
+                className='px-8 py-3 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-pink-600 to-amber-600 hover:from-pink-700 hover:to-amber-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed'
               >
                 {isLoading ? 'Saving...' : 'Save Profile & Continue'}
               </button>

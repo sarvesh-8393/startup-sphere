@@ -54,14 +54,14 @@ export default async function Page({ searchParams }: Props) {
         full_name: userName,
         avatar_url: userImage,
       }])
-      .select("id")
+      .select("id, avatar_url")
       .single();
 
     if (insertErr) {
       console.error("Error inserting profile:", insertErr);
       // Continue anyway
     } else {
-      profile = newProfile;
+      profile = newProfile as { id: string; avatar_url: string };
     }
   } else {
     // Update avatar_url if different

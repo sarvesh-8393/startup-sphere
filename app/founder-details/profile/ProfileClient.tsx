@@ -294,7 +294,7 @@ export default function ProfileClient() {
                       <div className="space-y-2">
                         {profile.featured_projects.map((project, idx) => (
                           <div key={idx} className="flex items-start">
-                            <Target className="w-4 h-4 mr-3 mt-0.5 text-yellow-400 flex-shrink-0" />
+                            <Sparkles className="w-4 h-4 mr-3 mt-0.5 text-yellow-400 flex-shrink-0" />
                             <span className="text-gray-700">{project}</span>
                           </div>
                         ))}

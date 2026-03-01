@@ -69,14 +69,6 @@ export default function StartupOnboarding() {
   const router = useRouter();
   const { data: session } = useSession();
 
-  // Calculate total steps based on role selection
-  const getTotalSteps = useCallback(() => {
-    if (answers.role === "Founder") {
-      return 6; // All steps including stage
-    }
-    return 5; // Skip stage step
-  }, [answers.role]);
-
   // Get options for current step based on role
   const getCurrentOptions = () => {
     if (typeof currentStep.options === 'object' && !Array.isArray(currentStep.options)) {
@@ -88,12 +80,13 @@ export default function StartupOnboarding() {
   };
 
   // Check if current step should be shown based on role
-  const shouldShowStep = useCallback(() => {
-    if (currentStep.roles && answers.role) {
-      return currentStep.roles.includes(answers.role as string);
+  const shouldShowStep = useCallback((stepIndex: number) => {
+    const stepData = steps[stepIndex];
+    if (stepData.roles && answers.role) {
+      return stepData.roles.includes(answers.role as string);
     }
     return true;
-  }, [currentStep, answers.role]);
+  }, [answers.role]);
 
   // Get the next valid step index
   const getNextValidStep = useCallback((currentIndex: number) => {
@@ -156,7 +149,7 @@ export default function StartupOnboarding() {
 
   useEffect(() => {
     // Skip invalid steps based on role
-    if (!shouldShowStep() && step < steps.length - 1) {
+    if (!shouldShowStep(step) && step < steps.length - 1) {
       const nextValid = getNextValidStep(step - 1); // Check from current step
       if (nextValid !== step) {
         setStep(nextValid);
