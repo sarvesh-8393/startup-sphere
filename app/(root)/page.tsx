@@ -4,10 +4,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import { Startup } from "@/components/StartupCard";
 
 import HeroSection from "@/components/HeroSection";
-import AllStartup from "@/components/AllStartup";
-import StartupCard, { type Startup } from "@/components/StartupCard";
 import RecommendedStartups from "@/components/RecommendedStartups";
 
 type Props = { searchParams?: Promise<{ query?: string; tags?: string; stage?: string; location?: string; sort?: string }> };

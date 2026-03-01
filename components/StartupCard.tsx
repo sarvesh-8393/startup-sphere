@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { EyeIcon } from '@heroicons/react/24/solid';
+import { EyeIcon, HeartIcon } from '@heroicons/react/24/solid';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -22,6 +22,8 @@ export interface Startup {
   tags: string[];
   recommendation_score?: number;
   recommendation_reasons?: string[];
+  // additional flags coming from APIs
+  isLiked?: boolean;
 }
 
 interface Props {
@@ -39,6 +41,16 @@ const StartupCard: React.FC<Props> = ({ startups, showMatchScore = false }) => {
     return 'text-orange-600 bg-orange-100';
   };
 
+  // display the score as an integer percentage
+  // never collapse a non-zero score to `0%` (show `<1%` instead)
+  const formatMatchScore = (score: number) => {
+    const pct = Math.round(score * 100);
+    if (pct === 0 && score > 0) {
+      return '<1% match';
+    }
+    return `${pct}% match`;
+  };
+
   return (
     <div className="flex justify-center items-start px-2 sm:px-4 pb-40">
       <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -48,10 +60,15 @@ const StartupCard: React.FC<Props> = ({ startups, showMatchScore = false }) => {
             onClick={() => router.push(`/startup/${items.slug}`)}
             className="list-none cursor-pointer min-h-[530px] w-full border border-gray-200 bg-amber-50 rounded-xl p-5 flex flex-col items-center shadow-md transition-all duration-300 hover:border-b-4 hover:border-r-4 hover:border-pink-600 hover:bg-pink-100 group relative"
           >
+            {/* Liked badge */}
+            {items.isLiked && (
+              <HeartIcon className="absolute top-4 left-4 h-5 w-5 text-red-500" />
+            )}
+
             {/* Match Score Badge (Netflix style) */}
             {showMatchScore && items.recommendation_score !== undefined && (
               <div className={`absolute top-4 right-4 px-3 py-1 rounded-full font-bold text-sm ${getMatchScoreColor(items.recommendation_score)}`}>
-                {Math.round(items.recommendation_score * 100)}% match
+                {formatMatchScore(items.recommendation_score)}
               </div>
             )}
 
@@ -125,8 +142,17 @@ const StartupCard: React.FC<Props> = ({ startups, showMatchScore = false }) => {
 
             {/* Tag + Details */}
             <div className="mt-3 w-full flex justify-between items-center">
-              <div className="bg-pink-100 text-pink-700 px-3 py-2 rounded-full text-sm font-medium shadow-sm group-hover:bg-amber-100 group-hover:text-amber-700">
-                {items.tags?.[0] ?? 'General'}
+              <div className="flex flex-wrap gap-2">
+                {((items.tags && items.tags.length > 0) ? items.tags : ['General'])
+                  .slice(0, 2)
+                  .map((tag) => (
+                    <div
+                      key={tag}
+                      className="bg-pink-100 text-pink-700 px-3 py-2 rounded-full text-sm font-medium shadow-sm group-hover:bg-amber-100 group-hover:text-amber-700"
+                    >
+                      {tag}
+                    </div>
+                  ))}
               </div>
               <p className="relative group text-sm text-pink-700 font-semibold group-hover:text-amber-600">
                 Details

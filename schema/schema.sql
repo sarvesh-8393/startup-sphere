@@ -105,6 +105,7 @@ CREATE TABLE IF NOT EXISTS startups (
   team_profiles TEXT,
   awards TEXT,
   location TEXT
+  embedding,
 );
 
 -- transactions

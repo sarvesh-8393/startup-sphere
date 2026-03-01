@@ -68,9 +68,9 @@ export default async function PaymentPage({
           <div className="space-y-6">
             <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-16 h-16 rounded-xl overflow-hidden border-2 border-pink-200">
+                  <div className="w-16 h-16 rounded-xl overflow-hidden border-2 border-pink-200">
                   <Image
-                    src={data.image_url}
+                    src={data.image_url && String(data.image_url).trim() ? String(data.image_url) : "/user.png"}
                     alt={data.name}
                     width={64}
                     height={64}

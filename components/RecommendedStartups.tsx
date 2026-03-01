@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 interface RecommendedStartup extends Startup {
   recommendation_score?: number;
   recommendation_reasons?: string[];
+  isLiked?: boolean;
 }
 
 export default function RecommendedStartups() {
@@ -20,7 +21,9 @@ export default function RecommendedStartups() {
     async function fetchRecommendations() {
       try {
         setLoading(true);
-        const res = await fetch("/api/recommend?limit=6");
+        // include liked startups in the returned list so the user can still
+        // see items they recently liked on refresh
+        const res = await fetch("/api/recommend?limit=6&filter_liked=false");
 
         if (!res.ok) {
           throw new Error("Failed to fetch recommendations");

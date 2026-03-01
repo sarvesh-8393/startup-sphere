@@ -182,7 +182,7 @@ export default async function ProfilePage({
                 <div key={startup.id} className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden hover:shadow-2xl transition-all duration-300 group">
                   <div className="relative h-48 overflow-hidden">
                     <Image
-                      src={startup.image_url}
+                      src={startup.image_url && String(startup.image_url).trim() ? String(startup.image_url) : "/user.png"}
                       alt={startup.name}
                       fill
                       className="object-cover group-hover:scale-105 transition-transform duration-300"

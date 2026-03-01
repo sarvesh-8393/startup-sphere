@@ -1,41 +1,35 @@
+// app/api/recommend/route.ts
+// Now uses embedding-based similarity instead of TF-IDF
+
 import { getServerSession } from "next-auth";
 import { getRecommendations, getTrendingStartups } from "@/lib/recommendation";
 import { authOptions } from "@/lib/auth";
 import { supabase } from "@/lib/supabaseClient";
 
-interface UserData {
-  id: string;
-}
-
-/**
- * GET /api/recommend?limit=10&exclude=id1,id2
- *
- * Returns personalized startup recommendations
- * - If user is logged in: content-based + behavior-aware recommendations
- * - If user is not logged in: trending startups
- */
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
-    const limit = parseInt(url.searchParams.get("limit") || "10");
+    const limit = Math.min(parseInt(url.searchParams.get("limit") || "10"), 50);
     const excludeParam = url.searchParams.get("exclude") || "";
     const excludeIds = excludeParam ? excludeParam.split(",") : [];
 
-    // Get session
     const session = await getServerSession(authOptions);
 
     let recommendations: unknown[] = [];
 
     if (session?.user?.email) {
-      // Get user ID from email
+      // Logged-in user → personalized recommendations
       const { data: userData, error: userError } = await supabase
         .from("profiles")
         .select("id")
         .eq("email", session.user.email)
         .single();
 
+      // control whether liked items should be filtered out -- default true
+      const filterLiked = url.searchParams.get('filter_liked') !== 'false';
+
       if (userError || !userData) {
-        // If user not found, return trending
+        // Can't find profile → fall back to trending
         const trending = await getTrendingStartups(limit, excludeIds);
         recommendations = trending.map((rec) => ({
           ...rec.startup,
@@ -43,17 +37,18 @@ export async function GET(request: Request) {
           recommendation_reasons: rec.reasons,
         }));
       } else {
-        const typedUserData = userData as UserData;
-        // Get personalized recommendations
-        const recs = await getRecommendations(typedUserData.id, limit, excludeIds);
+        // Has profile → personalized
+        const recs = await getRecommendations(userData.id, limit, excludeIds, filterLiked);
         recommendations = recs.map((rec) => ({
           ...rec.startup,
           recommendation_score: rec.score,
           recommendation_reasons: rec.reasons,
+          is_serendipitous: rec.is_serendipitous,
         }));
+
       }
     } else {
-      // Not logged in: return trending startups
+      // Anonymous user → trending
       const trending = await getTrendingStartups(limit, excludeIds);
       recommendations = trending.map((rec) => ({
         ...rec.startup,
@@ -62,23 +57,46 @@ export async function GET(request: Request) {
       }));
     }
 
+    // if the user was logged-in, compute isLiked for every returned startup
+    if (session?.user?.email) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', session.user.email)
+        .single();
+      if (profile && recommendations.length > 0) {
+        const ids = recommendations.map((r: any) => r.id);
+        const { data: likedRows } = await supabase
+          .from('startup_likes')
+          .select('startup_id')
+          .eq('user_id', profile.id)
+          .in('startup_id', ids);
+        const likedIds = (likedRows || []).map((r) => r.startup_id);
+        recommendations = recommendations.map((r: any) => ({
+          ...r,
+          isLiked: likedIds.includes(r.id),
+        }));
+      }
+    }
+
+    // ensure missing flag defaults to false
+    const payload = recommendations.map((r: any) => ({
+      ...r,
+      isLiked: !!(r as any).isLiked,
+    }));
+
     return Response.json(
       {
         success: true,
-        count: recommendations.length,
-        recommended: recommendations,
+        count: payload.length,
+        recommended: payload,
       },
       { status: 200 }
     );
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Failed to generate recommendations";
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to generate recommendations";
     console.error("Recommendation API error:", error);
-    return Response.json(
-      {
-        success: false,
-        error: errorMessage,
-      },
-      { status: 500 }
-    );
+    return Response.json({ success: false, error: errorMessage }, { status: 500 });
   }
 }

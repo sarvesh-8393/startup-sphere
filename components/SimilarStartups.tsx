@@ -7,6 +7,7 @@ import StartupCard, { Startup } from './StartupCard';
 interface SimilarStartup extends Startup {
   recommendation_score?: number;
   recommendation_reasons?: string[];
+  isLiked?: boolean;
 }
 
 export default function SimilarStartups({ startupId, startupName }: { startupId: string; startupName: string }) {

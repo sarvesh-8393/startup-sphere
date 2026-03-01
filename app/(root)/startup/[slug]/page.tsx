@@ -116,15 +116,19 @@ export default async function StartupPage({
       {/* Hero Section - Enhanced Professional Look */}
       <div className="relative min-h-screen overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <div className="relative w-full h-full">
-            <Image
-              src={data.image_url as string}
-              alt="Startup Image"
-              fill
-              priority={true}
-              className="object-cover"
-            />
-          </div>
+          {data.image_url && String(data.image_url).trim() ? (
+            <div className="relative w-full h-full">
+              <Image
+                src={String(data.image_url)}
+                alt="Startup Image"
+                fill
+                priority={true}
+                className="object-cover"
+              />
+            </div>
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-pink-200 to-amber-200" />
+          )}
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/60 to-black/80" />
         </div>
 

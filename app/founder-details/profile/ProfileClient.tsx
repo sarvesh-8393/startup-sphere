@@ -82,7 +82,13 @@ export default function ProfileClient() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to fetch profile');
+        // don't throw—just update state so we can display error without
+        // spamming the console with uncaught exceptions
+        const msg = data.error || 'Failed to fetch profile';
+        console.error('founder-details API error:', msg);
+        setError(msg);
+        setIsLoading(false);
+        return;
       }
 
       if (data.profile) {
