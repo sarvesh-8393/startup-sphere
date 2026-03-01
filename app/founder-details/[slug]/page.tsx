@@ -73,7 +73,6 @@ export default function EditFounderDetailsPage() {
   const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
   const [logoPreview, setLogoPreview] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const tagsDropdownRef = useRef<HTMLDivElement>(null);

@@ -37,7 +37,7 @@ export default async function Page({ searchParams }: Props) {
     .eq("email", userEmail)
     .maybeSingle();
 
-  let profile = _profileRes.data as any;
+  let profile: { id: string; avatar_url: string } | null = _profileRes.data;
   const profileErr = _profileRes.error;
 
   if (profileErr) {
@@ -107,13 +107,9 @@ export default async function Page({ searchParams }: Props) {
   const host = headersList.get('host') || 'localhost:3000';
   const baseUrl = `${protocol}://${host}`;
 
-  let startups: Startup[] = [];
   try {
     const res = await fetch(`${baseUrl}/api/startup?${params.toString()}`);
-    if (res.ok) {
-      const data = await res.json();
-      startups = Array.isArray(data) ? data as Startup[] : [];
-    } else {
+    if (!res.ok) {
       const text = await res.text();
       console.error('API error:', res.status, text);
     }

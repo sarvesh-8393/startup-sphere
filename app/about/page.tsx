@@ -279,7 +279,7 @@ const AboutPage = () => {
             >
               <h3 className="text-xl font-semibold text-pink-700 mb-4">Innovation at Scale</h3>
               <p className="text-gray-700 leading-relaxed">
-                Our platform scales with your growth. Whether you're just starting out or expanding globally, StartupSphere provides the tools and visibility you need at every stage of your entrepreneurial journey.
+                Our platform scales with your growth. Whether you&apos;re just starting out or expanding globally, StartupSphere provides the tools and visibility you need at every stage of your entrepreneurial journey.
               </p>
             </motion.div>
           </div>
@@ -296,7 +296,7 @@ const AboutPage = () => {
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl font-bold mb-6">Join the StartupSphere Community</h2>
           <p className="text-xl mb-8 leading-relaxed">
-            Ready to be part of the future of entrepreneurship? Whether you're launching your dream startup or seeking the next big opportunity, StartupSphere is your gateway to innovation and success.
+            Ready to be part of the future of entrepreneurship? Whether you&apos;re launching your dream startup or seeking the next big opportunity, StartupSphere is your gateway to innovation and success.
           </p>
           <motion.button
             whileHover={{ scale: 1.05 }}

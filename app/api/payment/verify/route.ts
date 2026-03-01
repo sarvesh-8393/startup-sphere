@@ -62,7 +62,7 @@ export async function POST(request: Request) {
 
     // Log transaction in database
     const finalAmount = amount || (Number(payment.amount) / 100);
-    const { data: transaction, error: transactionError } = await supabase
+    await supabase
       .from('transactions')
       .insert({
         sender_id: profileData.id,

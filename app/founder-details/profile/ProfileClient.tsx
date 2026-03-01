@@ -13,13 +13,10 @@ import {
   Edit,
   User,
   Trophy,
-  Lightbulb,
-  Target,
   ChevronLeft,
   Mail,
   Sparkles,
   GraduationCap,
-  Briefcase,
   Tag
 } from 'lucide-react';
 

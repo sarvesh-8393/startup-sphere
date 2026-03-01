@@ -387,7 +387,7 @@ export async function GET(request: Request): Promise<NextResponse<StartupWithPro
     }
 
     return NextResponse.json(sortedStartups, { status: 200 });
-  } catch (err: unknown) {
+  } catch (_err: unknown) {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

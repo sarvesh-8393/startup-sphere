@@ -1,6 +1,5 @@
 // app/startup/[slug]/page.tsx
 
-import Navbar from "@/components/Navbar";
 import Image from "next/image";
 import { LinkedinIcon, Twitter, Globe, Target, Users, Lightbulb, Rocket, Award, TrendingUp, Heart, ExternalLink, ArrowRight, Star, Calendar, Eye } from "lucide-react";
 import { HeroButtons } from "./StartupPageClient";

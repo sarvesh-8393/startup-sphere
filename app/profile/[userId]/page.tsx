@@ -1,4 +1,3 @@
-import Navbar from "@/components/Navbar";
 import Image from "next/image";
 import { User, MapPin, Calendar, ExternalLink, Building2, Users, TrendingUp } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";

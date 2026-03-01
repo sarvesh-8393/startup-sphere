@@ -33,7 +33,7 @@ export const authOptions: NextAuthOptions = {
 
   callbacks: {
     // Runs when user signs in
-    async signIn({ user }) {
+    async signIn() {
       // Temporarily disable DB checks to avoid errors
       // TODO: Re-enable once Supabase is properly configured
       return true; // allow sign-in

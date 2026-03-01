@@ -1,10 +1,27 @@
 import Razorpay from 'razorpay';
 
-// Initialize Razorpay instance
-export const razorpayInstance = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || '',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || '',
-});
+// Lazy initialize Razorpay instance - only initialize when actually needed
+let razorpayInstanceCache: Razorpay | null = null;
+
+function getRazorpayInstance(): Razorpay {
+  if (!razorpayInstanceCache) {
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+    if (!keyId || !keySecret) {
+      throw new Error('RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET environment variables are required');
+    }
+
+    razorpayInstanceCache = new Razorpay({
+      key_id: keyId,
+      key_secret: keySecret,
+    });
+  }
+
+  return razorpayInstanceCache;
+}
+
+export { getRazorpayInstance as razorpayInstance };
 
 /**
  * Generate Razorpay order for startup funding
@@ -23,7 +40,7 @@ export async function createRazorpayOrder(
     const timestamp = Math.floor(Date.now() / 1000); // Seconds since epoch
     const receipt = `startup-${shortId}-${timestamp}`.slice(0, 40);
 
-    const order = await razorpayInstance.orders.create({
+    const order = await getRazorpayInstance().orders.create({
       amount: Math.round(amount * 100), // Razorpay expects amount in paise (1 rupee = 100 paise)
       currency: 'INR',
       receipt,
@@ -97,7 +114,7 @@ export async function verifyRazorpayPayment(
  */
 export async function getPaymentDetails(paymentId: string) {
   try {
-    const payment = await razorpayInstance.payments.fetch(paymentId);
+    const payment = await getRazorpayInstance().payments.fetch(paymentId);
     return {
       success: true,
       payment,

@@ -232,7 +232,7 @@ function CommentItem({
 }
 
 export default function Discussion({ startupId }: { startupId: string }) {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [founderId, setFounderId] = useState<string | null>(null);
 

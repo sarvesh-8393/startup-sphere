@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { gsap } from "gsap";
 import { useRouter } from "next/navigation";
@@ -70,12 +70,12 @@ export default function StartupOnboarding() {
   const { data: session } = useSession();
 
   // Calculate total steps based on role selection
-  const getTotalSteps = () => {
+  const getTotalSteps = useCallback(() => {
     if (answers.role === "Founder") {
       return 6; // All steps including stage
     }
     return 5; // Skip stage step
-  };
+  }, [answers.role]);
 
   // Get options for current step based on role
   const getCurrentOptions = () => {
@@ -88,15 +88,15 @@ export default function StartupOnboarding() {
   };
 
   // Check if current step should be shown based on role
-  const shouldShowStep = () => {
+  const shouldShowStep = useCallback(() => {
     if (currentStep.roles && answers.role) {
       return currentStep.roles.includes(answers.role as string);
     }
     return true;
-  };
+  }, [currentStep, answers.role]);
 
   // Get the next valid step index
-  const getNextValidStep = (currentIndex: number) => {
+  const getNextValidStep = useCallback((currentIndex: number) => {
     for (let i = currentIndex + 1; i < steps.length; i++) {
       const step = steps[i];
       if (!step.roles || !answers.role || step.roles.includes(answers.role as string)) {
@@ -104,7 +104,7 @@ export default function StartupOnboarding() {
       }
     }
     return steps.length - 1; // wrapup
-  };
+  }, [answers.role]);
 
   useEffect(() => {
     const checkUserPreferences = async () => {

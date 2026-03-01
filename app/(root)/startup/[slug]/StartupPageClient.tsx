@@ -208,7 +208,7 @@ function LikeButton({ slug, currentLikes, onLike, onLikeSuccess }: { slug: strin
 }
 
 // Hero Buttons Component
-function HeroButtons({ slug, founderId, currentUserId, initialLikes }: { slug: string; founderId: string; currentUserId: string | null; initialLikes: number }) {
+function HeroButtons({ slug, founderId, initialLikes }: { slug: string; founderId: string; initialLikes: number }) {
   const [likes, setLikes] = useState(initialLikes);
 
   return (

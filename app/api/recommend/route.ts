@@ -65,14 +65,14 @@ export async function GET(request: Request) {
         .eq('email', session.user.email)
         .single();
       if (profile && recommendations.length > 0) {
-        const ids = recommendations.map((r: any) => r.id);
+        const ids = recommendations.map((r: Record<string, unknown>) => r.id);
         const { data: likedRows } = await supabase
           .from('startup_likes')
           .select('startup_id')
           .eq('user_id', profile.id)
           .in('startup_id', ids);
         const likedIds = (likedRows || []).map((r) => r.startup_id);
-        recommendations = recommendations.map((r: any) => ({
+        recommendations = recommendations.map((r: Record<string, unknown>) => ({
           ...r,
           isLiked: likedIds.includes(r.id),
         }));
@@ -80,9 +80,9 @@ export async function GET(request: Request) {
     }
 
     // ensure missing flag defaults to false
-    const payload = recommendations.map((r: any) => ({
+    const payload = recommendations.map((r: Record<string, unknown>) => ({
       ...r,
-      isLiked: !!(r as any).isLiked,
+      isLiked: !!(r as Record<string, unknown>).isLiked,
     }));
 
     return Response.json(
