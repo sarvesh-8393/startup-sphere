@@ -1,232 +1,363 @@
-// lib/recommendation.ts
-// Embedding-based recommendation engine with K-Means Multi-Interest Clustering
-// Replaces single averaged vector with multiple cluster centroids
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { supabase } from "@/lib/supabaseClient";
-import { averageVectors, cosineSimilarity } from "@/lib/embedding";
 
-// ============================================================
-// TYPES
-// ============================================================
-
-export interface Startup {
+interface Startup {
   id: string;
   name: string;
-  slug: string;
   short_description?: string;
+  slug?: string;
   description?: string;
-  image_url?: string | null;
   tags?: string[];
-  funding_stage?: string;
+  mission_statement?: string;
+  problem_solution?: string;
+  target_market?: string;
+  likes_count?: number;
   likes?: number;
+  views_count?: number;
   views?: number;
   created_at?: string;
-  embedding?: number[];
   [key: string]: unknown;
 }
 
-export interface RecommendationResult {
+interface RecommendationScore {
   startup: Startup;
   score: number;
   reasons: string[];
+  cluster_source?: number;
   is_serendipitous?: boolean;
-  matched_cluster?: number; // which interest cluster this came from (0-indexed)
+}
+
+interface UserPreferences {
+  tags?: string[];
+  stage?: string;
+  location?: string;
 }
 
 // ============================================================
-// K-MEANS CLUSTERING
+// STEP 1: TEXT PROCESSING & HELPERS
 // ============================================================
 
 /**
- * Euclidean distance between two vectors
+ * Builds a single text string from a startup's fields for TF-IDF vectorization
+ */
+function buildStartupText(startup: Startup): string {
+  return [
+    startup.name || "",
+    startup.short_description || "",
+    startup.description || "",
+    startup.mission_statement || "",
+    startup.problem_solution || "",
+    startup.target_market || "",
+    (startup.tags || []).join(" "),
+  ]
+    .join(" ")
+    .toLowerCase()
+    .trim();
+}
+
+/**
+ * Cosine similarity between two sparse term-frequency maps
+ */
+function cosineSimilarity(
+  vecA: Map<string, number>,
+  vecB: Map<string, number>
+): number {
+  if (vecA.size === 0 || vecB.size === 0) return 0;
+
+  let dot = 0;
+  let magA = 0;
+  let magB = 0;
+
+  vecA.forEach((val, key) => {
+    dot += val * (vecB.get(key) || 0);
+    magA += val * val;
+  });
+
+  vecB.forEach((val) => {
+    magB += val * val;
+  });
+
+  if (magA === 0 || magB === 0) return 0;
+  return dot / (Math.sqrt(magA) * Math.sqrt(magB));
+}
+
+/**
+ * Euclidean distance between two dense vectors
  */
 function euclideanDistance(a: number[], b: number[]): number {
-  let sum = 0;
-  for (let i = 0; i < a.length; i++) {
-    sum += (a[i] - b[i]) ** 2;
-  }
-  return Math.sqrt(sum);
+  return Math.sqrt(a.reduce((sum, val, i) => sum + Math.pow(val - b[i], 2), 0));
 }
 
 /**
- * K-Means clustering on a set of embedding vectors.
- * Returns an array of cluster centroid vectors.
- *
- * Example:
- *   Input:  [ai_vec1, ai_vec2, ai_vec3, fintech_vec1, fintech_vec2]
- *   k = 2
- *   Output: [ai_centroid, fintech_centroid]
+ * TF-IDF Vectorization: builds sparse vectors for all startups
+ * Returns: Map of startup_id → sparse term-frequency map
  */
-function kMeansClusters(vectors: number[][], k: number, maxIterations = 20): number[][] {
+async function buildTfIdfVectors(
+  startups: Startup[]
+): Promise<Map<string, Map<string, number>>> {
+  const natural: any = await import("natural");
+  const TfIdf = natural.TfIdf as any;
+  const tfidf = new TfIdf();
+
+  // Add each startup's text as a document
+  startups.forEach((s) => tfidf.addDocument(buildStartupText(s)));
+
+  const vectors = new Map<string, Map<string, number>>();
+
+  startups.forEach((startup, idx) => {
+    const termMap = new Map<string, number>();
+    tfidf.listTerms(idx).forEach((item: any) => {
+      termMap.set(item.term, item.tfidf);
+    });
+    vectors.set(startup.id, termMap);
+  });
+
+  return vectors;
+}
+
+// ============================================================
+// STEP 2: MULTI-INTEREST CLUSTERING (K-Means)
+// ============================================================
+
+/**
+ * Collects all unique terms across a set of vectors (for vocabulary building)
+ */
+function getVocabulary(vectors: Map<string, number>[]): string[] {
+  const vocab = new Set<string>();
+  vectors.forEach((v) => v.forEach((_, term) => vocab.add(term)));
+  return Array.from(vocab);
+}
+
+/**
+ * Converts sparse term map to dense numeric array using shared vocabulary
+ */
+function toDenseVector(
+  termMap: Map<string, number>,
+  vocab: string[]
+): number[] {
+  return vocab.map((term) => termMap.get(term) || 0);
+}
+
+/**
+ * K-Means clustering implementation
+ * Returns: cluster assignment for each vector (array index → cluster index)
+ */
+function kMeans(
+  vectors: number[][],
+  k: number,
+  maxIterations = 20
+): number[] {
   if (vectors.length === 0) return [];
 
-  // Not enough vectors to form k clusters — return each vector as its own cluster
-  if (vectors.length <= k) return vectors.map((v) => [...v]);
+  // Cap k to number of vectors
+  k = Math.min(k, vectors.length);
 
   const dim = vectors[0].length;
 
-  // Initialize: pick k random vectors as starting centroids
-  const shuffled = [...vectors].sort(() => Math.random() - 0.5);
-  let centroids: number[][] = shuffled.slice(0, k).map((v) => [...v]);
+  // Initialize centroids: randomly pick k vectors as starting centroids
+  const centroidIndices = new Set<number>();
+  while (centroidIndices.size < k) {
+    centroidIndices.add(Math.floor(Math.random() * vectors.length));
+  }
+  let centroids: number[][] = Array.from(centroidIndices).map(
+    (i) => [...vectors[i]]
+  );
+
   let assignments = new Array(vectors.length).fill(0);
 
   for (let iter = 0; iter < maxIterations; iter++) {
     // Assignment step: assign each vector to nearest centroid
     const newAssignments = vectors.map((vec) => {
+      let minDist = Infinity;
       let bestCluster = 0;
-      let bestDist = Infinity;
       centroids.forEach((centroid, ci) => {
         const dist = euclideanDistance(vec, centroid);
-        if (dist < bestDist) {
-          bestDist = dist;
+        if (dist < minDist) {
+          minDist = dist;
           bestCluster = ci;
         }
       });
       return bestCluster;
     });
 
-    // Check convergence: stop if nothing changed
+    // Check for convergence
     const changed = newAssignments.some((a, i) => a !== assignments[i]);
     assignments = newAssignments;
+
     if (!changed) break;
 
-    // Update step: recompute each centroid as mean of assigned vectors
-    const sums: number[][] = Array.from({ length: k }, () => new Array(dim).fill(0));
+    // Update step: recompute centroids as mean of assigned vectors
+    const newCentroids: number[][] = Array.from({ length: k }, () =>
+      new Array(dim).fill(0)
+    );
     const counts = new Array(k).fill(0);
 
     vectors.forEach((vec, i) => {
       const cluster = assignments[i];
-      vec.forEach((val, d) => (sums[cluster][d] += val));
+      vec.forEach((val, d) => (newCentroids[cluster][d] += val));
       counts[cluster]++;
     });
 
-    centroids = sums.map((sum, ci) =>
-      counts[ci] > 0 ? sum.map((v) => v / counts[ci]) : centroids[ci]
+    centroids = newCentroids.map((centroid, ci) =>
+      counts[ci] > 0 ? centroid.map((v) => v / counts[ci]) : centroid
     );
   }
 
-  return centroids;
+  return assignments;
 }
 
 /**
- * Decides how many clusters (k) to create.
- *
- * Formula: k = min(ceil(sqrt(n)), 4)
- *
- * n liked  → k clusters
- * 1        → 1  (no clustering, just one vector)
- * 4        → 2
- * 9        → 3
- * 16+      → 4  (capped at 4 max)
+ * Converts a dense vector back to sparse term map
  */
-function decideK(n: number): number {
-  return Math.min(Math.ceil(Math.sqrt(n)), 4);
+function denseToTermMap(
+  denseVec: number[],
+  vocab: string[]
+): Map<string, number> {
+  const map = new Map<string, number>();
+  denseVec.forEach((val, i) => {
+    if (val > 0.001) map.set(vocab[i], val); // threshold to avoid tiny values
+  });
+  return map;
 }
 
 /**
- * MAIN CLUSTERING FUNCTION
- * Builds interest cluster centroids + weights from liked startup embeddings.
+ * MAIN: Builds multiple interest clusters from user's liked startups.
  *
- * Returns:
- *   centroids: one vector per cluster (the "center" of that interest area)
- *   weights:   how much the user cares about each cluster (based on liked count)
+ * Instead of averaging all liked startups into one blurry vector,
+ * we cluster them to identify distinct interest areas.
  *
- * Example:
- *   User likes 3 AI + 2 Fintech startups → k=2
- *   centroids = [AI centroid, Fintech centroid]
- *   weights   = [0.60, 0.40]   ← user likes AI more
+ * Example: User liked 5 startups → detects 2 clusters:
+ *   Cluster 1: AI startups (3 items) → AI vector
+ *   Cluster 2: Fintech startups (2 items) → Fintech vector
+ *
+ * Returns: Array of cluster centroid vectors (as sparse term maps)
  */
-function buildInterestClusters(likedEmbeddings: number[][]): {
-  centroids: number[][];
-  weights: number[];
-} {
-  if (likedEmbeddings.length === 0) return { centroids: [], weights: [] };
+export function buildUserInterestClusters(
+  likedStartups: Startup[],
+  tfidfVectors: Map<string, Map<string, number>>
+): Map<string, number>[] {
+  if (likedStartups.length === 0) return [];
 
-  const k = decideK(likedEmbeddings.length);
+  // Gather vectors for liked startups only
+  const likedVectors: Map<string, number>[] = likedStartups
+    .map((s) => tfidfVectors.get(s.id))
+    .filter((v): v is Map<string, number> => v !== undefined);
 
-  if (k === 1) {
-    return {
-      centroids: [averageVectors(likedEmbeddings)],
-      weights: [1.0],
-    };
+  if (likedVectors.length === 0) return [];
+
+  // If very few liked startups, just average them (no need to cluster)
+  if (likedVectors.length <= 2) {
+    return [averageVectors(likedVectors)];
   }
 
-  const centroids = kMeansClusters(likedEmbeddings, k);
+  // Determine k: sqrt heuristic, capped at 4 interest clusters max
+  const k = Math.min(Math.ceil(Math.sqrt(likedVectors.length)), 4);
 
-  // Count how many liked startups belong to each cluster
-  const counts = new Array(centroids.length).fill(0);
-  likedEmbeddings.forEach((vec) => {
-    let bestCluster = 0;
-    let bestDist = Infinity;
-    centroids.forEach((centroid, ci) => {
-      const dist = euclideanDistance(vec, centroid);
-      if (dist < bestDist) {
-        bestDist = dist;
-        bestCluster = ci;
-      }
-    });
-    counts[bestCluster]++;
+  // Build shared vocabulary & convert to dense vectors for K-Means
+  const vocab = getVocabulary(likedVectors);
+  const denseVectors = likedVectors.map((v) => toDenseVector(v, vocab));
+
+  // Run K-Means clustering
+  const assignments = kMeans(denseVectors, k);
+
+  // Compute one centroid (mean vector) per cluster
+  const clusterSums: number[][] = Array.from({ length: k }, () =>
+    new Array(vocab.length).fill(0)
+  );
+  const clusterCounts = new Array(k).fill(0);
+
+  denseVectors.forEach((vec, i) => {
+    const cluster = assignments[i];
+    vec.forEach((val, d) => (clusterSums[cluster][d] += val));
+    clusterCounts[cluster]++;
   });
 
-  // Weight = proportion of liked startups in this cluster
-  // Example: counts=[3,2], total=5 → weights=[0.60, 0.40]
-  const total = likedEmbeddings.length;
-  const weights = counts.map((c) => c / total);
+  // Convert cluster centroids back to sparse maps
+  const clusterCentroids: Map<string, number>[] = clusterSums
+    .map((sum, ci) =>
+      clusterCounts[ci] > 0
+        ? denseToTermMap(
+            sum.map((v) => v / clusterCounts[ci]),
+            vocab
+          )
+        : null
+    )
+    .filter((c): c is Map<string, number> => c !== null && c.size > 0);
 
-  return { centroids, weights };
+  return clusterCentroids;
 }
 
 /**
- * Computes a WEIGHTED similarity score across all clusters.
- *
- * Instead of just taking the best cluster match, we weight each cluster
- * by how many startups the user liked in it.
- *
- * Example:
- *   User liked 3 AI + 2 Fintech startups
- *   AI cluster weight     = 3/5 = 0.60
- *   Fintech cluster weight = 2/5 = 0.40
- *
- *   New AI startup:
- *     sim vs AI      = 0.80 × 0.60 = 0.48
- *     sim vs Fintech = 0.20 × 0.40 = 0.08
- *     weighted score = 0.56  ← ranks higher
- *
- *   New Fintech startup:
- *     sim vs AI      = 0.20 × 0.60 = 0.12
- *     sim vs Fintech = 0.71 × 0.40 = 0.28
- *     weighted score = 0.40  ← ranks lower, user prefers AI
- *
- * This naturally surfaces more AI recommendations since user likes AI more.
+ * Average multiple sparse vectors into one
  */
-function bestClusterMatch(
-  embedding: number[],
-  clusters: number[][],
-  clusterWeights: number[]  // weight per cluster based on liked count
-): { score: number; clusterIndex: number } {
-  let weightedScore = 0;
-  let bestCluster = 0;
-  let bestRawSim = 0;
-
-  clusters.forEach((centroid, idx) => {
-    const sim = cosineSimilarity(embedding, centroid);
-    const weight = clusterWeights[idx] || (1 / clusters.length);
-    weightedScore += sim * weight;
-
-    // track which cluster had the highest raw similarity (for logging)
-    if (sim > bestRawSim) {
-      bestRawSim = sim;
-      bestCluster = idx;
-    }
+function averageVectors(vectors: Map<string, number>[]): Map<string, number> {
+  const result = new Map<string, number>();
+  const n = vectors.length;
+  vectors.forEach((v) => {
+    v.forEach((val, term) => {
+      result.set(term, (result.get(term) || 0) + val / n);
+    });
   });
-
-  return { score: weightedScore, clusterIndex: bestCluster };
+  return result;
 }
 
 // ============================================================
-// SCORING HELPERS
+// STEP 3: SERENDIPITY ENGINE
 // ============================================================
 
+/**
+ * Computes a serendipity score for a startup relative to user's history.
+ *
+ * High serendipity = startup is relevant but DIFFERENT from what user usually sees.
+ *
+ * Formula:
+ *   serendipity = relevanceToCluster × (1 - similarityToHistory)
+ *
+ * This ensures we don't recommend completely random startups —
+ * only ones that are "surprisingly relevant" (novelty + relevance).
+ */
+export function computeSerendipityScore(
+  startupVector: Map<string, number>,
+  interestClusters: Map<string, number>[],
+  userHistoryVectors: Map<string, number>[]
+): number {
+  if (interestClusters.length === 0) return 0;
+
+  // Step 1: Find max relevance to any interest cluster
+  const maxClusterSimilarity = Math.max(
+    ...interestClusters.map((cluster) =>
+      cosineSimilarity(startupVector, cluster)
+    )
+  );
+
+  // No relevance at all? Skip (don't score this as serendipitous)
+  if (maxClusterSimilarity < 0.05) return 0;
+
+  // Step 2: Find max similarity to already-seen/liked startups
+  const maxHistorySimilarity =
+    userHistoryVectors.length > 0
+      ? Math.max(
+          ...userHistoryVectors.map((hv) =>
+            cosineSimilarity(startupVector, hv)
+          )
+        )
+      : 0;
+
+  // Step 3: Serendipity = relevant but novel
+  // A startup that is 70% relevant to a cluster but only 20% similar to history
+  // scores: 0.7 × (1 - 0.2) = 0.56
+  const serendipityScore = maxClusterSimilarity * (1 - maxHistorySimilarity);
+
+  return Math.max(0, Math.min(1, serendipityScore));
+}
+
+// ============================================================
+// STEP 4: SCORING HELPERS
+// ============================================================
+
+/**
+ * Jaccard similarity between user tags and startup tags
+ */
 function tagMatchScore(startupTags: string[], userTags: string[]): number {
   if (!startupTags?.length || !userTags?.length) return 0;
   const a = new Set(startupTags.map((t) => t.toLowerCase()));
@@ -236,287 +367,303 @@ function tagMatchScore(startupTags: string[], userTags: string[]): number {
   return union > 0 ? intersection / union : 0;
 }
 
-function likesScore(likes: number): number {
-  return Math.min((likes || 0) / 100, 1);
+/**
+ * Normalizes engagement metrics (likes and views)
+ */
+function engagementScore(
+  likes: number,
+  views: number
+): { likes: number; views: number } {
+  return {
+    likes: Math.min((likes || 0) / 100, 1),
+    views: Math.min((views || 0) / 1000, 1),
+  };
 }
 
-function viewsScore(views: number): number {
-  return Math.min((views || 0) / 1000, 1);
-}
-
+/**
+ * Recency score: newer startups score higher (exponential decay)
+ */
 function recencyScore(createdAt?: string): number {
   if (!createdAt) return 0.5;
-  const days = (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24);
+  const days =
+    (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24);
   return Math.exp(-days / 365);
 }
 
 /**
- * Serendipity score: relevant to user but different from what they already liked.
- *
- * Formula: bestClusterSimilarity × (1 - maxSimilarityToHistory)
- *
- * High serendipity = matches user's interests BUT is very different from liked startups
- * This surfaces "happy surprises" — things user would enjoy but never thought to search for
+ * Fetch user's liked startups from database
  */
-function serendipityScore(
-  startupEmbedding: number[],
-  centroids: number[][],
-  weights: number[],
-  historyEmbeddings: number[][]
-): number {
-  // How relevant is this to the user's interests (weighted by cluster preference)
-  const relevance = bestClusterMatch(startupEmbedding, centroids, weights).score;
-  if (relevance < 0.05) return 0;
-
-  // How similar is this to startups user already liked
-  const maxHistorySim =
-    historyEmbeddings.length > 0
-      ? Math.max(...historyEmbeddings.map((h) => cosineSimilarity(startupEmbedding, h)))
-      : 0;
-
-  return Math.max(0, Math.min(1, relevance * (1 - maxHistorySim)));
-}
-
-// ============================================================
-// EMBEDDING NORMALIZATION
-// ============================================================
-
-/**
- * Supabase pgvector sometimes returns the vector column as a string "[0.1,0.2,...]"
- * This normalizes it to a proper number array regardless.
- */
-function parseEmbedding(raw: unknown): number[] | null {
-  if (Array.isArray(raw) && raw.length > 0) return raw as number[];
-  if (typeof raw === "string") {
-    try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed as number[];
-    } catch {
-      return null;
-    }
-  }
-  return null;
-}
-
-// ============================================================
-// MAIN: PERSONALIZED RECOMMENDATIONS
-// ============================================================
-
-/**
- * Full recommendation pipeline:
- *
- * 1. Fetch user's liked startups + embeddings
- * 2. Run K-Means → multiple interest cluster centroids
- * 3. For each candidate: find best matching cluster
- * 4. Score: 0.35×ClusterSim + 0.15×Tags + 0.10×Likes + 0.10×Views + 0.10×Recency + 0.20×Serendipity
- * 5. Return top K with reasons
- */
-export async function getRecommendations(
-  userId: string,
-  limit = 10,
-  excludeIds: string[] = [],
-  filterLiked = true
-): Promise<RecommendationResult[]> {
-
-  // --- Fetch liked startup IDs ---
-  const { data: likedRows } = await supabase
+async function getLikedStartups(userId: string): Promise<Startup[]> {
+  const { data: likes, error } = await supabase
     .from("startup_likes")
     .select("startup_id")
     .eq("user_id", userId);
 
-  const likedIds: string[] = (likedRows || []).map((r) => r.startup_id);
-
-  if (likedIds.length === 0) {
-    return getTrendingStartups(limit, excludeIds);
+  if (error || !likes) {
+    console.error("Failed to fetch user likes:", error);
+    return [];
   }
 
-  // --- Fetch embeddings + tags for liked startups ---
-  const { data: likedStartups } = await supabase
+  // Fetch full startup data for liked IDs
+  const startupIds = likes.map((l: any) => l.startup_id);
+  if (startupIds.length === 0) return [];
+
+  const { data: startups, error: startupsError } = await supabase
     .from("startups")
-    .select("id, embedding, tags")
-    .in("id", likedIds);
+    .select("*")
+    .in("id", startupIds);
 
-  if (!likedStartups || likedStartups.length === 0) {
-    return getTrendingStartups(limit, excludeIds);
+  if (startupsError) {
+    console.error("Failed to fetch startup details:", startupsError);
+    return [];
   }
 
-  // Extract valid embeddings
-  const likedEmbeddings: number[][] = likedStartups
-    .map((s) => parseEmbedding(s.embedding))
-    .filter((e): e is number[] => e !== null);
+  return startups || [];
+}
 
-  if (likedEmbeddings.length === 0) {
-    return getTrendingStartups(limit, excludeIds);
+/**
+ * Fetch user preferences (tags, stage, location)
+ */
+async function getUserPreferences(userId: string): Promise<UserPreferences | null> {
+  const { data: prefs, error } = await supabase
+    .from("user_preferences")
+    .select("tags, stage, location")
+    .eq("profile_id", userId)
+    .single();
+
+  if (error) {
+    console.error("Failed to fetch user preferences:", error);
+    return null;
   }
 
-  // Collect user tags from liked startups
-  const userTags = Array.from(new Set(likedStartups.flatMap((s) => s.tags || [])));
+  return prefs || null;
+}
 
-  // --- Build K-Means interest clusters with weights ---
-  // KEY INNOVATION: Instead of one blurry average, we get k distinct interest centroids
-  // User likes 3 AI + 2 Fintech → centroids=[AI, Fintech], weights=[0.60, 0.40]
-  // AI startup scores higher because user historically prefers AI
-  const { centroids: interestClusters, weights: clusterWeights } = buildInterestClusters(likedEmbeddings);
+// ============================================================
+// STEP 5: MAIN RECOMMENDATION FUNCTION (WITH CLUSTERING & SERENDIPITY)
+// ============================================================
 
-  console.log(
-    `K-Means clustering: ${likedEmbeddings.length} liked startups → ${interestClusters.length} cluster(s), weights: [${clusterWeights.map(w => w.toFixed(2)).join(', ')}]`
+/**
+ * Gets personalized recommendations for a logged-in user.
+ *
+ * NEW: Uses K-Means clustering to model multiple distinct user interests,
+ * then balances relevance with serendipity to prevent filter bubbles.
+ *
+ * Scoring formula:
+ *   Score = 0.35×BestClusterSim + 0.15×TagMatch + 0.10×Likes
+ *          + 0.10×Views + 0.10×Recency + 0.20×Serendipity
+ *
+ * The 0.20 weight on serendipity means ~20% of ranking is driven by discovery value,
+ * which naturally surfaces ~2 out of 10 recommendations as "happy surprises".
+ */
+export async function getRecommendations(
+  userId: string,
+  topK: number = 10,
+  excludeIds: string[] = []
+): Promise<RecommendationScore[]> {
+  // Fetch all startups and user's liked startups
+  const { data: allStartups, error: startupsError } = await supabase
+    .from("startups")
+    .select("*");
+
+  if (startupsError || !allStartups || allStartups.length === 0) {
+    console.error("Failed to fetch startups:", startupsError);
+    return [];
+  }
+
+  const likedStartups = await getLikedStartups(userId);
+  const userPreferences = await getUserPreferences(userId);
+
+  // Build TF-IDF vectors for all startups
+  const tfidfVectors = await buildTfIdfVectors(allStartups);
+
+  // Build multi-interest clusters from liked startups
+  const interestClusters = buildUserInterestClusters(
+    likedStartups,
+    tfidfVectors
   );
 
-  // --- IDs to exclude ---
-  const allExcludeIds = filterLiked
-    ? [...new Set([...likedIds, ...excludeIds])]
-    : [...new Set([...excludeIds])];
+  // Get history vectors (for serendipity calculation)
+  const historyVectors: Map<string, number>[] = likedStartups
+    .map((s) => tfidfVectors.get(s.id))
+    .filter((v): v is Map<string, number> => v !== undefined);
 
-  // --- Fetch candidate startups ---
-  const { data: candidates } = await supabase
-    .from("startups")
-    .select("id, name, slug, short_description, description, image_url, tags, funding_stage, likes, views, created_at, embedding, founder_id, profiles(full_name, avatar_url)")
-    .not("id", "in", `(${allExcludeIds.join(",")})`)
-    .not("embedding", "is", null)
-    .limit(limit * 3);
+  const likedIds = new Set(likedStartups.map((s) => s.id));
+  const userTags = userPreferences?.tags || [];
 
-  if (!candidates || candidates.length === 0) {
-    return getTrendingStartups(limit, excludeIds);
-  }
-
-  // --- Score each candidate ---
-  const scored: RecommendationResult[] = candidates
+  // Score every startup
+  const scored: RecommendationScore[] = allStartups
+    .filter((s) => s.id !== userId && !likedIds.has(s.id)) // exclude already-liked
+    .filter((s) => !excludeIds.includes(s.id))
     .map((startup) => {
-      const embedding = parseEmbedding(startup.embedding);
-      if (!embedding) return null;
+      const startupVec = tfidfVectors.get(startup.id) || new Map();
 
-      // Weighted cluster similarity
-      // A Fintech startup scores high against Fintech cluster
-      // but is weighted down if user likes AI more (clusterWeights)
-      const { score: clusterSim, clusterIndex } = bestClusterMatch(embedding, interestClusters, clusterWeights);
+      // 1. Best content similarity across all interest clusters
+      let bestClusterSim = 0;
+      let bestClusterIdx = -1;
+      if (interestClusters.length > 0) {
+        interestClusters.forEach((cluster, idx) => {
+          const sim = cosineSimilarity(startupVec, cluster);
+          if (sim > bestClusterSim) {
+            bestClusterSim = sim;
+            bestClusterIdx = idx;
+          }
+        });
+      }
 
+      // 2. Tag match
       const tagScore = tagMatchScore(startup.tags || [], userTags);
-      const lScore = likesScore(startup.likes || 0);
-      const vScore = viewsScore(startup.views || 0);
+
+      // 3. Engagement signals (use normalized field names)
+      const engagement = engagementScore(
+        startup.likes_count || startup.likes || 0,
+        startup.views_count || startup.views || 0
+      );
+
+      // 4. Recency
       const recency = recencyScore(startup.created_at);
-      const sScore = serendipityScore(embedding, interestClusters, clusterWeights, likedEmbeddings);
 
+      // 5. Serendipity
+      const serendipity = computeSerendipityScore(
+        startupVec,
+        interestClusters,
+        historyVectors
+      );
+
+      // Hybrid score: Content(0.35) + Tags(0.15) + Likes(0.10) + Views(0.10) + Recency(0.10) + Serendipity(0.20)
       const score =
-        0.35 * clusterSim +
+        0.35 * bestClusterSim +
         0.15 * tagScore +
-        0.10 * lScore +
-        0.10 * vScore +
-        0.10 * recency +
-        0.20 * sScore;
+        0.1 * engagement.likes +
+        0.1 * engagement.views +
+        0.1 * recency +
+        0.2 * serendipity;
 
+      // Generate human-readable reasons
       const reasons: string[] = [];
-      if (clusterSim > 0.6) reasons.push("matches your interests");
+      if (bestClusterSim > 0.4) reasons.push("matches your interests");
       if (tagScore > 0.3) reasons.push("matches your tags");
-      if (lScore > 0.5) reasons.push("popular with users");
+      if (engagement.likes > 0.5) reasons.push("popular with users");
       if (recency > 0.7) reasons.push("trending now");
-      if (sScore > 0.4 && clusterSim < 0.5) reasons.push("discovery pick for you");
+      if (serendipity > 0.4 && bestClusterSim < 0.4)
+        reasons.push("discovery pick for you");
       if (reasons.length === 0) reasons.push("recommended for you");
 
       return {
-        startup: startup as Startup,
-        score: Math.round(score * 1000) / 1000,
+        startup,
+        score,
         reasons,
-        is_serendipitous: sScore > 0.4 && clusterSim < 0.5,
-        matched_cluster: clusterIndex,
-      } as RecommendationResult;
-    })
-    .filter((r): r is RecommendationResult => r !== null);
+        cluster_source: bestClusterIdx,
+        is_serendipitous: serendipity > 0.4 && bestClusterSim < 0.4,
+      };
+    });
 
-  let sorted = scored.sort((a, b) => b.score - a.score);
+  // Sort by score descending
+  scored.sort((a, b) => b.score - a.score);
 
-  // Pad with trending if not enough results
-  if (sorted.length < limit) {
-    const needed = limit - sorted.length;
-    const already = sorted.map((r) => r.startup.id);
-    const trending = await getTrendingStartups(needed, [...allExcludeIds, ...already]);
-    sorted = sorted.concat(trending);
-  }
-
-  return sorted.slice(0, limit);
+  return scored.slice(0, topK);
 }
 
-// ============================================================
-// TRENDING (anonymous / cold-start users)
-// ============================================================
+/**
+ * Builds TF-IDF model from all startups (legacy function for compatibility)
+ */
 
-export async function getTrendingStartups(
-  limit = 10,
-  excludeIds: string[] = []
-): Promise<RecommendationResult[]> {
-  let query = supabase
-    .from("startups")
-    .select("id, name, slug, short_description, description, image_url, tags, funding_stage, likes, views, created_at, founder_id, profiles(full_name, avatar_url)")
-    .limit(limit * 2);
 
-  if (excludeIds.length > 0) {
-    query = query.not("id", "in", `(${excludeIds.join(",")})`);
-  }
-
-  const { data: startups } = await query;
-  if (!startups) return [];
-
-  return startups
-    .map((startup) => ({
-      startup: startup as Startup,
-      score: Math.round(
-        (0.40 * likesScore(startup.likes || 0) +
-          0.30 * viewsScore(startup.views || 0) +
-          0.30 * recencyScore(startup.created_at)) * 1000
-      ) / 1000,
-      reasons: ["trending now"],
-      is_serendipitous: false,
-    }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
-}
-
-// ============================================================
-// SIMILAR STARTUPS (startup detail pages)
-// ============================================================
-
+/**
+ * Get startups similar to a specific startup.
+ * Uses TF-IDF similarity + tag overlap for recommendation.
+ * Used on individual startup detail pages.
+ */
 export async function getSimilarStartups(
-  targetStartupId: string,
-  limit = 6
-): Promise<RecommendationResult[]> {
-  const { data: target } = await supabase
+  startupId: string,
+  topK: number = 6,
+  excludeIds: string[] = []
+): Promise<RecommendationScore[]> {
+  const { data: allStartups, error } = await supabase
     .from("startups")
-    .select("id, embedding, tags")
-    .eq("id", targetStartupId)
-    .single();
+    .select("*");
 
-  if (!target) return [];
+  if (error || !allStartups || allStartups.length === 0) {
+    return [];
+  }
 
-  const targetEmbedding = parseEmbedding(target.embedding);
-  if (!targetEmbedding) return [];
+  // Find the target startup
+  const targetStartup = allStartups.find((s) => s.id === startupId);
+  if (!targetStartup) {
+    return [];
+  }
 
-  const targetTags = target.tags || [];
+  // Build TF-IDF vectors
+  const tfidfVectors = await buildTfIdfVectors(allStartups);
+  const targetVec = tfidfVectors.get(startupId) || new Map();
 
-  const { data: others } = await supabase
-    .from("startups")
-    .select("id, name, slug, short_description, description, tags, funding_stage, likes, views, created_at, embedding, image_url, founder_id, profiles(full_name, avatar_url)")
-    .neq("id", targetStartupId)
-    .not("embedding", "is", null)
-    .limit(50);
-
-  if (!others) return [];
-
-  return others
+  // Score and rank similar startups
+  const scores: RecommendationScore[] = allStartups
+    .filter((s) => s.id !== startupId && !excludeIds.includes(s.id))
     .map((startup) => {
-      const embedding = parseEmbedding(startup.embedding);
-      if (!embedding) return null;
-
-      const contentSim = cosineSimilarity(embedding, targetEmbedding);
-      const tagScore = tagMatchScore(startup.tags || [], targetTags);
+      const startupVec = tfidfVectors.get(startup.id) || new Map();
+      const contentSim = cosineSimilarity(startupVec, targetVec);
+      const tagScore = tagMatchScore(
+        startup.tags || [],
+        targetStartup.tags || []
+      );
       const score = 0.6 * contentSim + 0.4 * tagScore;
 
       return {
-        startup: startup as Startup,
-        score: Math.round(score * 1000) / 1000,
+        startup,
+        score,
         reasons: ["similar to this startup"],
         is_serendipitous: false,
-      } as RecommendationResult;
+      };
     })
-    .filter((r): r is RecommendationResult => r !== null)
     .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
+    .slice(0, topK);
+
+  return scores;
+}
+
+/**
+ * Get trending startups (for cold-start / anonymous users).
+ * Uses engagement signals (likes, views) + recency.
+ * No clustering needed — just popularity ranking.
+ */
+export async function getTrendingStartups(
+  topK: number = 10,
+  excludeIds: string[] = []
+): Promise<RecommendationScore[]> {
+  const { data: startups, error } = await supabase
+    .from("startups")
+    .select("*");
+
+  if (error || !startups) {
+    return [];
+  }
+
+  const scores: RecommendationScore[] = startups
+    .filter((s: Startup) => !excludeIds.includes(s.id))
+    .map((s: Startup) => {
+      const engagement = engagementScore(
+        s.likes_count || s.likes || 0,
+        s.views_count || s.views || 0
+      );
+      const recency = recencyScore(s.created_at);
+
+      const score = 0.4 * engagement.likes + 0.3 * engagement.views + 0.3 * recency;
+
+      const reasons: string[] = [];
+      if (engagement.likes > 0.5) reasons.push("highly liked");
+      if (engagement.views > 0.5) reasons.push("viewed frequently");
+      if (recency > 0.7) reasons.push("trending now");
+
+      return {
+        startup: s,
+        score,
+        reasons: reasons.length > 0 ? reasons : ["trending"],
+        is_serendipitous: false,
+      };
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topK);
+
+  return scores;
 }

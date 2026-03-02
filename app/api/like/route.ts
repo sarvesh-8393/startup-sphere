@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import {
+  AB_SYSTEM_TYPE_RECOMMENDATION,
+  getTestingSessionIdFromCookie,
+  updateTestingSessionMetrics,
+} from "@/lib/testingSession";
 
 export async function POST(req: Request) {
   try {
@@ -92,6 +97,16 @@ export async function POST(req: Request) {
 
     if (updateErr) {
       return NextResponse.json({ error: updateErr.message }, { status: 500 });
+    }
+
+    if (isLiked) {
+      const trackingSessionId = getTestingSessionIdFromCookie(req.headers.get("cookie"));
+      await updateTestingSessionMetrics({
+        systemType: AB_SYSTEM_TYPE_RECOMMENDATION,
+        userId,
+        sessionId: trackingSessionId,
+        likesDelta: 1,
+      });
     }
 
     return NextResponse.json({ likes: nextLikes, isLiked });

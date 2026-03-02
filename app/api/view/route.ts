@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import {
+  AB_SYSTEM_TYPE_RECOMMENDATION,
+  getTestingSessionIdFromCookie,
+  updateTestingSessionMetrics,
+} from "@/lib/testingSession";
 
 export async function POST(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
     const { slug } = await req.json();
     if (!slug) {
       return NextResponse.json({ error: "slug is required" }, { status: 400 });
@@ -28,6 +36,24 @@ export async function POST(req: Request) {
     if (updateErr) {
       return NextResponse.json({ error: updateErr.message }, { status: 500 });
     }
+
+    let userId: string | null = null;
+    if (session?.user?.email) {
+      const { data: userData } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", session.user.email)
+        .single();
+      userId = userData?.id || null;
+    }
+
+    const trackingSessionId = getTestingSessionIdFromCookie(req.headers.get("cookie"));
+    await updateTestingSessionMetrics({
+      systemType: AB_SYSTEM_TYPE_RECOMMENDATION,
+      userId,
+      sessionId: trackingSessionId,
+      clicksDelta: 1,
+    });
 
     return NextResponse.json({ views: nextViews });
   } catch (err: unknown) {

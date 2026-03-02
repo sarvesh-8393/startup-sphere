@@ -36,14 +36,39 @@ export async function POST(req: Request) {
   const funding_stage      = getField('funding_stage');
   const account_details    = getField('account_details');
   const image_url_direct   = getField('image_url');
+  const image_file = formData.get('image_file');
   const mission_statement  = getField('mission_statement');
   const problem_solution   = getField('problem_solution');
   const target_market      = getField('target_market');
   const tags = getField('tags').split(',').map(tag => tag.trim()).filter(Boolean);
 
   const slug = `${name.replace(/\s+/g, '-').toLowerCase()}-${uuidv4()}`;
-  const image_url = image_url_direct;
-  // (storage upload logic unchanged)
+  let image_url = image_url_direct;
+
+  // If user uploaded a file, upload it to Supabase Storage and use that URL.
+  if (image_file instanceof File && image_file.size > 0) {
+    const safeFileName = image_file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const filePath = `startups/${slug}-${Date.now()}-${safeFileName}`;
+    const fileBuffer = Buffer.from(await image_file.arrayBuffer());
+
+    const { error: uploadError } = await supabase.storage
+      .from('startup-images')
+      .upload(filePath, fileBuffer, {
+        contentType: image_file.type || 'application/octet-stream',
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error('Supabase storage upload error:', uploadError.message);
+      return new Response(JSON.stringify({ error: uploadError.message }), { status: 500 });
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from('startup-images')
+      .getPublicUrl(filePath);
+
+    image_url = publicUrlData.publicUrl;
+  }
 
   // --- Step 1: Insert startup into database ---
   const { data: insertedStartup, error: dbError } = await supabase

@@ -28,7 +28,8 @@ export async function PUT(req: Request) {
     const website_url = formData.get('website_url') as string;
     const funding_stage = formData.get('funding_stage') as string;
     const account_details = formData.get('account_details') as string;
-    const image_url = formData.get('image_url') as string;
+    let image_url = formData.get('image_url') as string;
+    const image_file = formData.get('image_file');
     const tagsString = formData.get('tags') as string; // Get as string
     let founder_id = formData.get('founder_id') as string; // Allow null type
     const mission_statement = formData.get('mission_statement') as string;
@@ -41,6 +42,30 @@ export async function PUT(req: Request) {
     const team_profiles = formData.get('team_profiles') as string;
     const awards = formData.get('awards') as string;
     const follower_message = formData.get('follower_message') as string;
+
+    if (image_file instanceof File && image_file.size > 0) {
+      const safeFileName = image_file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const filePath = `startups/${slug}-${Date.now()}-${safeFileName}`;
+      const fileBuffer = Buffer.from(await image_file.arrayBuffer());
+
+      const { error: uploadError } = await supabase.storage
+        .from('startup-images')
+        .upload(filePath, fileBuffer, {
+          contentType: image_file.type || 'application/octet-stream',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error('Supabase storage upload error:', uploadError.message);
+        return NextResponse.json({ message: 'Image upload failed', error: uploadError.message }, { status: 500 });
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from('startup-images')
+        .getPublicUrl(filePath);
+
+      image_url = publicUrlData.publicUrl;
+    }
 
     // Parse tags into an array (assuming comma-separated string from form)
     const tags = tagsString ? tagsString.split(',').map(tag => tag.trim()) : [];

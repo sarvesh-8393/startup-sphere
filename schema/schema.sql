@@ -142,3 +142,17 @@ CREATE TABLE IF NOT EXISTS user_preferences (
   created_at TIMESTAMP DEFAULT now(),
   updated_at TIMESTAMP DEFAULT now()
 );
+
+-- testing_sessions (A/B testing metrics)
+CREATE TABLE IF NOT EXISTS testing_sessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  system_type TEXT NOT NULL CHECK (system_type IN ('baseline', 'recommendation')),
+  user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  session_id TEXT,
+  clicks INTEGER NOT NULL DEFAULT 0,
+  likes INTEGER NOT NULL DEFAULT 0,
+  time_spent_seconds INTEGER NOT NULL DEFAULT 0,
+  rating INTEGER,
+  created_at TIMESTAMP DEFAULT now(),
+  updated_at TIMESTAMP DEFAULT now()
+);

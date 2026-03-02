@@ -5,6 +5,11 @@ import { getServerSession } from "next-auth";
 import { getRecommendations, getTrendingStartups } from "@/lib/recommendation";
 import { authOptions } from "@/lib/auth";
 import { supabase } from "@/lib/supabaseClient";
+import {
+  AB_SYSTEM_TYPE_RECOMMENDATION,
+  getOrCreateTestingSessionId,
+  getTestingSessionIdFromCookie,
+} from "@/lib/testingSession";
 
 export async function GET(request: Request) {
   try {
@@ -14,6 +19,8 @@ export async function GET(request: Request) {
     const excludeIds = excludeParam ? excludeParam.split(",") : [];
 
     const session = await getServerSession(authOptions);
+    const trackingSessionId = getTestingSessionIdFromCookie(request.headers.get("cookie"));
+    let trackingUserId: string | null = null;
 
     let recommendations: Record<string, unknown>[] = [];
 
@@ -25,9 +32,6 @@ export async function GET(request: Request) {
         .eq("email", session.user.email)
         .single();
 
-      // control whether liked items should be filtered out -- default true
-      const filterLiked = url.searchParams.get('filter_liked') !== 'false';
-
       if (userError || !userData) {
         // Can't find profile → fall back to trending
         const trending = await getTrendingStartups(limit, excludeIds);
@@ -38,7 +42,8 @@ export async function GET(request: Request) {
         }));
       } else {
         // Has profile → personalized
-        const recs = await getRecommendations(userData.id, limit, excludeIds, filterLiked);
+        trackingUserId = userData.id;
+        const recs = await getRecommendations(userData.id, limit, excludeIds);
         recommendations = recs.map((rec) => ({
           ...rec.startup,
           recommendation_score: rec.score,
@@ -84,6 +89,12 @@ export async function GET(request: Request) {
       ...r,
       isLiked: !!(r as Record<string, unknown>).isLiked,
     }));
+
+    await getOrCreateTestingSessionId({
+      systemType: AB_SYSTEM_TYPE_RECOMMENDATION,
+      userId: trackingUserId,
+      sessionId: trackingSessionId,
+    });
 
     return Response.json(
       {

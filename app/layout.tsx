@@ -4,6 +4,7 @@ import "./globals.css";
 import SessionWrapper from "@/components/SessionWrapper";
 import SessionSync from "@/components/SessionSync";
 import Navbar from "@/components/Navbar";
+import ABTestingTracker from "@/components/ABTestingTracker";
 import { Toaster } from "react-hot-toast";
 
 const geistSans = Geist({
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
          <SessionWrapper>
            <SessionSync/>
+           <ABTestingTracker />
            <Navbar />
            <div className="min-h-screen bg-gradient-to-br from-pink-50 to-amber-50">
              {children}

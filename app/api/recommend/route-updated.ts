@@ -2,7 +2,6 @@
 // Updated API endpoint to expose new recommendation features
 
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { getRecommendations, getTrendingStartups } from "@/lib/recommendation";
 
@@ -13,7 +12,7 @@ export async function GET(request: Request) {
     const excludeStr = searchParams.get("exclude");
     const excludeIds = excludeStr ? excludeStr.split(",") : [];
 
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
 
     // Personalized recommendations for logged-in users
     if (session?.user?.id) {
@@ -33,6 +32,10 @@ export async function GET(request: Request) {
           // Recommendation metadata
           recommendation_score: Math.round(r.score * 1000) / 1000,
           recommendation_reasons: r.reasons,
+          
+          // NEW: Multi-cluster and serendipity features
+          cluster_source: r.cluster_source,
+          is_serendipitous: r.is_serendipitous,
         })),
       });
     }
@@ -47,6 +50,8 @@ export async function GET(request: Request) {
         ...r.startup,
         recommendation_score: Math.round(r.score * 1000) / 1000,
         recommendation_reasons: r.reasons,
+        cluster_source: undefined, // N/A for trending
+        is_serendipitous: false,   // N/A for trending
       })),
     });
   } catch (error) {
@@ -73,8 +78,12 @@ export async function getRecommendationAnalytics(userId: string) {
     const serendipitousCount = recommendations.filter(
       (r) => r.is_serendipitous
     ).length;
-    // clustering not available with current embedding model
-    const clusterCounts = new Map<number, number>();
+    const clusterCounts = new Map<number | undefined, number>();
+
+    recommendations.forEach((r) => {
+      const cluster = r.cluster_source;
+      clusterCounts.set(cluster, (clusterCounts.get(cluster) || 0) + 1);
+    });
 
     return {
       total_recommendations: recommendations.length,
